@@ -1,0 +1,21 @@
+# Append these to /boot/firmware/config.txt (Pi OS Bookworm) or /boot/config.txt (older)
+
+# --- GPU memory ---
+gpu_mem=128          # increase to 256 for video-heavy use
+
+# --- HDMI forced output (useful for kiosk/display projects) ---
+hdmi_force_hotplug=1
+hdmi_drive=2         # HDMI mode (not DVI) — enables audio over HDMI
+
+# --- Disable Pi rainbow splash ---
+disable_splash=1
+
+# --- SPI / I2C ---
+dtparam=spi=on
+dtparam=i2c_arm=on
+
+# --- Audio via 3.5mm jack (comment out if using LED on GPIO 18) ---
+dtparam=audio=on
+
+# --- NeoPixel / ws281x on GPIO 18: disable audio first ---
+# dtparam=audio=off
