@@ -20,8 +20,8 @@ body {
 #tabs { display: flex; background: #16213e; border-bottom: 2px solid #0f3460; flex-shrink: 0; }
 .tab {
   flex: 1; padding: 11px 0; text-align: center;
-  font-size: 12px; font-weight: 700; letter-spacing: .5px;
-  color: #666; cursor: pointer;
+  font-size: 11px; font-weight: 700; letter-spacing: .4px;
+  color: #555; cursor: pointer;
 }
 .tab.active { color: #e94560; border-bottom: 2px solid #e94560; margin-bottom: -2px; }
 
@@ -57,15 +57,78 @@ body {
 .key.xwide { max-width: 150px; flex: 3; }
 .key.mod   { background: #1a2a4a; color: #7eb8ff; }
 
-/* ── TEXT ── */
-#text-panel { flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 12px; background: #0d0d1a; }
-#text-panel textarea {
+/* ── VOICE / PROMPT ── */
+#voice-panel {
+  flex: 1; display: flex; flex-direction: column;
+  padding: 14px 14px 10px; gap: 10px; background: #0d0d1a;
+  touch-action: auto;
+}
+
+#voice-top { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+#lang-toggle {
+  background: #16213e; border: 1px solid #0f3460; border-radius: 8px;
+  color: #7eb8ff; font-size: 13px; font-weight: 700;
+  padding: 8px 12px; cursor: pointer; touch-action: manipulation;
+  flex-shrink: 0;
+}
+
+#voice-status {
+  flex: 1; font-size: 12px; color: #555; text-align: center;
+}
+
+#mic-btn {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: #16213e; border: 3px solid #0f3460;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px; cursor: pointer; flex-shrink: 0;
+  touch-action: manipulation;
+  transition: background .15s, border-color .15s, transform .1s;
+  align-self: center;
+}
+#mic-btn.recording {
+  background: #7a0020; border-color: #e94560;
+  animation: pulse 1s infinite;
+}
+@keyframes pulse {
+  0%,100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(233,69,96,.4); }
+  50%      { transform: scale(1.06); box-shadow: 0 0 0 12px rgba(233,69,96,0); }
+}
+
+#interim {
+  font-size: 13px; color: #555; font-style: italic;
+  min-height: 20px; text-align: center; flex-shrink: 0;
+}
+
+#prompt-box {
   flex: 1; background: #16213e; border: 2px solid #0f3460; border-radius: 10px;
   color: #eee; font-size: 16px; padding: 12px; resize: none;
-  touch-action: auto; user-select: text;
-  outline: none;
+  touch-action: auto; user-select: text; outline: none;
+  font-family: system-ui, sans-serif;
 }
-#text-panel textarea:focus { border-color: #e94560; }
+#prompt-box:focus { border-color: #e94560; }
+
+#voice-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.vbtn {
+  flex: 1; padding: 13px 6px; border-radius: 10px; border: none;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  touch-action: manipulation; text-align: center;
+}
+#btn-send-prompt { background: #e94560; color: #fff; flex: 2; font-size: 15px; }
+#btn-send-text   { background: #1a2a4a; color: #7eb8ff; border: 1px solid #0f3460; }
+#btn-clear-voice { background: #16213e; color: #666; border: 1px solid #0f3460; }
+
+/* ── TEXT ── */
+#text-panel {
+  flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 12px;
+  background: #0d0d1a; touch-action: auto;
+}
+#text-input {
+  flex: 1; background: #16213e; border: 2px solid #0f3460; border-radius: 10px;
+  color: #eee; font-size: 16px; padding: 12px; resize: none;
+  touch-action: auto; user-select: text; outline: none;
+}
+#text-input:focus { border-color: #e94560; }
 #text-actions { display: flex; gap: 10px; flex-shrink: 0; }
 .txt-btn {
   flex: 1; padding: 14px; border-radius: 10px; border: none;
@@ -73,9 +136,7 @@ body {
 }
 #btn-send { background: #e94560; color: #fff; }
 #btn-clear { background: #16213e; color: #aaa; border: 1px solid #0f3460; }
-#text-status { font-size: 12px; color: #555; text-align: center; flex-shrink: 0; }
 
-/* ── STATUS BAR ── */
 #status { padding: 3px 10px; font-size: 11px; color: #444; background: #111; text-align: right; flex-shrink: 0; }
 </style>
 </head>
@@ -84,6 +145,7 @@ body {
 <div id="tabs">
   <div class="tab active" onclick="switchTab('touchpad')">TOUCHPAD</div>
   <div class="tab" onclick="switchTab('keyboard')">KEYBOARD</div>
+  <div class="tab" onclick="switchTab('voice')">🎙 VOICE</div>
   <div class="tab" onclick="switchTab('text')">TEXT</div>
 </div>
 
@@ -91,10 +153,8 @@ body {
 <div class="panel active" id="panel-touchpad">
   <div id="touchpad">
     <div id="touchpad-hint">
-      Drag · move mouse<br>
-      Tap · left click<br>
-      2-finger drag · scroll<br>
-      2-finger tap · right click
+      Drag · move mouse<br>Tap · left click<br>
+      2-finger drag · scroll<br>2-finger tap · right click
     </div>
   </div>
   <div id="mouse-buttons">
@@ -161,15 +221,36 @@ body {
   </div>
 </div>
 
-<!-- TEXT INPUT -->
+<!-- VOICE PROMPT -->
+<div class="panel" id="panel-voice">
+  <div id="voice-panel">
+    <div id="voice-top">
+      <button id="lang-toggle" onclick="toggleLang()">EN 🌐</button>
+      <div id="voice-status">Tap mic to speak</div>
+    </div>
+
+    <div id="mic-btn" onclick="toggleMic()">🎙</div>
+
+    <div id="interim"></div>
+
+    <textarea id="prompt-box" placeholder="Transcript appears here. Edit if needed, then send." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+
+    <div id="voice-actions">
+      <button class="vbtn" id="btn-clear-voice" onclick="clearPrompt()">CLR</button>
+      <button class="vbtn" id="btn-send-text"   onclick="sendPromptText()">SEND</button>
+      <button class="vbtn" id="btn-send-prompt" onclick="sendPrompt()">SEND + ↵</button>
+    </div>
+  </div>
+</div>
+
+<!-- TEXT -->
 <div class="panel" id="panel-text">
   <div id="text-panel">
-    <textarea id="text-input" placeholder="Type here using your phone keyboard, then tap SEND to type it on the Pi..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+    <textarea id="text-input" placeholder="Type here using phone keyboard, then tap SEND." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
     <div id="text-actions">
       <button class="txt-btn" id="btn-clear" onclick="clearText()">CLEAR</button>
-      <button class="txt-btn" id="btn-send" onclick="sendText()">SEND TO PI</button>
+      <button class="txt-btn" id="btn-send"  onclick="sendText()">SEND TO PI</button>
     </div>
-    <div id="text-status">Type in the box · SEND types it on Pi</div>
   </div>
 </div>
 
@@ -178,13 +259,10 @@ body {
 <script>
 // ── Tabs ──
 function switchTab(name) {
-  document.querySelectorAll(".tab").forEach((t,i) => t.classList.toggle("active", ["touchpad","keyboard","text"][i] === name));
+  const names = ["touchpad","keyboard","voice","text"];
+  document.querySelectorAll(".tab").forEach((t,i) => t.classList.toggle("active", names[i] === name));
   document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
   document.getElementById("panel-" + name).classList.add("active");
-  if (name === "text") {
-    document.getElementById("text-input").style.touchAction = "auto";
-    document.getElementById("text-input").style.userSelect = "text";
-  }
 }
 
 function setStatus(msg) { document.getElementById("status").textContent = msg; }
@@ -194,94 +272,151 @@ function post(path, data) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data)
-  }).catch(() => setStatus("⚠ connection lost"));
+  }).catch(() => setStatus("⚠ lost connection"));
 }
 
-// ── Text send ──
+// ── Speech recognition ──
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, recActive = false;
+let lang = "en-US";
+
+function toggleLang() {
+  lang = lang === "en-US" ? "es-MX" : "en-US";
+  document.getElementById("lang-toggle").textContent = lang === "en-US" ? "EN 🌐" : "ES 🌐";
+  if (recActive) { stopMic(); startMic(); }
+}
+
+function toggleMic() {
+  if (recActive) stopMic(); else startMic();
+}
+
+function startMic() {
+  if (!SpeechRec) {
+    document.getElementById("voice-status").textContent = "Speech not supported on this browser. Use Chrome.";
+    return;
+  }
+  rec = new SpeechRec();
+  rec.lang = lang;
+  rec.continuous = false;
+  rec.interimResults = true;
+
+  rec.onstart = () => {
+    recActive = true;
+    document.getElementById("mic-btn").classList.add("recording");
+    document.getElementById("mic-btn").textContent = "⏹";
+    document.getElementById("voice-status").textContent = "Listening…";
+    document.getElementById("interim").textContent = "";
+  };
+
+  rec.onresult = e => {
+    let interim = "", final = "";
+    for (const r of e.results) {
+      if (r.isFinal) final += r[0].transcript;
+      else interim += r[0].transcript;
+    }
+    document.getElementById("interim").textContent = interim;
+    if (final) {
+      const box = document.getElementById("prompt-box");
+      box.value = (box.value ? box.value + " " : "") + final.trim();
+      document.getElementById("interim").textContent = "";
+    }
+  };
+
+  rec.onerror = e => {
+    document.getElementById("voice-status").textContent = "Error: " + e.error;
+    stopMic();
+  };
+
+  rec.onend = () => {
+    stopMic();
+    document.getElementById("voice-status").textContent = "Done. Edit text or send.";
+  };
+
+  rec.start();
+}
+
+function stopMic() {
+  recActive = false;
+  if (rec) { try { rec.stop(); } catch(e) {} rec = null; }
+  document.getElementById("mic-btn").classList.remove("recording");
+  document.getElementById("mic-btn").textContent = "🎙";
+}
+
+function clearPrompt() {
+  document.getElementById("prompt-box").value = "";
+  document.getElementById("interim").textContent = "";
+  document.getElementById("voice-status").textContent = "Tap mic to speak";
+}
+
+function sendPrompt() {
+  const txt = document.getElementById("prompt-box").value.trim();
+  if (!txt) return;
+  document.getElementById("voice-status").textContent = "Sending…";
+  post("/prompt", { text: txt }).then(() => {
+    document.getElementById("voice-status").textContent = "Sent ✓ — Claude Code got it";
+    document.getElementById("prompt-box").value = "";
+  });
+}
+
+function sendPromptText() {
+  const txt = document.getElementById("prompt-box").value.trim();
+  if (!txt) return;
+  document.getElementById("voice-status").textContent = "Sending…";
+  post("/text", { text: txt }).then(() => {
+    document.getElementById("voice-status").textContent = "Typed ✓";
+  });
+}
+
+// ── Text tab ──
 function sendText() {
   const txt = document.getElementById("text-input").value;
   if (!txt) return;
-  document.getElementById("text-status").textContent = "Sending…";
-  post("/text", { text: txt }).then(() => {
-    document.getElementById("text-status").textContent = `Sent ${txt.length} chars`;
-  });
+  post("/text", { text: txt }).then(() => setStatus("Sent " + txt.length + " chars"));
 }
-function clearText() {
-  document.getElementById("text-input").value = "";
-  document.getElementById("text-status").textContent = "Cleared";
-}
+function clearText() { document.getElementById("text-input").value = ""; }
 
 // ── Mouse buttons ──
-function mouseBtn(btn, action) {
-  post("/mouse", { btn, action });
-}
+function mouseBtn(btn, action) { post("/mouse", { btn, action }); }
 
-// ── Touchpad — RAF-batched for zero perceptible delay ──
+// ── Touchpad (RAF-batched) ──
 const pad = document.getElementById("touchpad");
 const hint = document.getElementById("touchpad-hint");
+let touches = {}, pendingDx = 0, pendingDy = 0, rafId = null;
+let moved = false, tapTimer = null, twoStart = 0, scrollAccum = 0;
+const SPEED = 2.0, TAP_MS = 180, SCROLL_STEP = 20;
 
-let touches   = {};
-let pendingDx = 0, pendingDy = 0;   // accumulated since last RAF flush
-let rafId     = null;
-let moved     = false;
-let tapTimer  = null;
-let twoStart  = 0;
-
-const SPEED      = 2.0;
-const TAP_MS     = 180;
-const SCROLL_STEP = 20;
-let scrollAccum  = 0;
-
-// RAF loop — flushes mouse delta at display refresh rate (~60fps)
 function flushMouse() {
   rafId = null;
   if (pendingDx || pendingDy) {
-    post("/mouse", { dx: pendingDx, dy: pendingDy });
+    post("/mouse", { dx: Math.round(pendingDx), dy: Math.round(pendingDy) });
     pendingDx = 0; pendingDy = 0;
   }
 }
-function scheduleFlush() {
-  if (!rafId) rafId = requestAnimationFrame(flushMouse);
-}
+function scheduleFlush() { if (!rafId) rafId = requestAnimationFrame(flushMouse); }
 
 pad.addEventListener("touchstart", e => {
-  e.preventDefault();
-  hint.style.opacity = "0";
+  e.preventDefault(); hint.style.opacity = "0";
   for (const t of e.changedTouches) touches[t.identifier] = { x: t.clientX, y: t.clientY };
-  if (e.touches.length === 1) {
-    moved = false;
-    tapTimer = setTimeout(() => tapTimer = null, TAP_MS + 60);
-  }
+  if (e.touches.length === 1) { moved = false; tapTimer = setTimeout(() => tapTimer = null, TAP_MS + 60); }
   if (e.touches.length === 2) twoStart = Date.now();
 }, { passive: false });
 
 pad.addEventListener("touchmove", e => {
   e.preventDefault();
-  const count = e.touches.length;
-
-  if (count === 1) {
-    const t = e.touches[0];
-    const prev = touches[t.identifier];
+  if (e.touches.length === 1) {
+    const t = e.touches[0], prev = touches[t.identifier];
     if (!prev) return;
-    const dx = (t.clientX - prev.x) * SPEED;
-    const dy = (t.clientY - prev.y) * SPEED;
-    if (dx || dy) {
-      pendingDx += dx;
-      pendingDy += dy;
-      moved = true;
-      scheduleFlush();   // batches into next animation frame — no delay
-    }
+    pendingDx += (t.clientX - prev.x) * SPEED;
+    pendingDy += (t.clientY - prev.y) * SPEED;
+    moved = true; scheduleFlush();
     touches[t.identifier] = { x: t.clientX, y: t.clientY };
-
-  } else if (count === 2) {
+  } else if (e.touches.length === 2) {
     const t0 = e.touches[0], t1 = e.touches[1];
     const p0 = touches[t0.identifier], p1 = touches[t1.identifier];
     if (!p0 || !p1) return;
-    const avgDy = ((t0.clientY - p0.y) + (t1.clientY - p1.y)) / 2;
-    scrollAccum += avgDy;
+    scrollAccum += ((t0.clientY - p0.y) + (t1.clientY - p1.y)) / 2;
     if (Math.abs(scrollAccum) >= SCROLL_STEP) {
-      const dir = scrollAccum > 0 ? -1 : 1;
-      post("/mouse", { scroll: dir });
+      post("/mouse", { scroll: scrollAccum > 0 ? -1 : 1 });
       scrollAccum = 0;
     }
     touches[t0.identifier] = { x: t0.clientX, y: t0.clientY };
@@ -293,12 +428,10 @@ pad.addEventListener("touchmove", e => {
 pad.addEventListener("touchend", e => {
   e.preventDefault();
   if (!moved && tapTimer && e.changedTouches.length === 1 && e.touches.length === 0) {
-    post("/mouse", { btn: "click" });
-    setStatus("click");
+    post("/mouse", { btn: "click" }); setStatus("click");
   }
   if (e.touches.length === 0 && twoStart && Date.now() - twoStart < TAP_MS && !moved) {
-    post("/mouse", { btn: "rightclick" });
-    setStatus("right click");
+    post("/mouse", { btn: "rightclick" }); setStatus("right click"); twoStart = 0;
   }
   for (const t of e.changedTouches) delete touches[t.identifier];
   if (e.touches.length === 0) { moved = false; scrollAccum = 0; twoStart = 0; }
@@ -311,11 +444,9 @@ pad.addEventListener("touchcancel", e => {
 
 // ── Keyboard ──
 const MODS = { shift: false, ctrl: false, alt: false };
-
 document.querySelectorAll(".key[data-key]").forEach(el => {
   const k = el.dataset.key;
   const isMod = k === "shift" || k === "ctrl" || k === "alt";
-
   el.addEventListener("pointerdown", ev => {
     ev.preventDefault();
     if (isMod) {
@@ -323,16 +454,14 @@ document.querySelectorAll(".key[data-key]").forEach(el => {
       document.querySelectorAll(`[data-key="${k}"]`).forEach(e => e.classList.toggle("held", MODS[k]));
       post("/key", { key: k, action: MODS[k] ? "down" : "up" });
     } else {
-      // release held mods together with key (Shift+A, Ctrl+C, etc.)
-      const modsBefore = { ...MODS };
+      const snap = { ...MODS };
       post("/key", { key: k, action: "tap" }).then(() => {
-        if (modsBefore.shift) { MODS.shift = false; document.querySelectorAll('[data-key="shift"]').forEach(e => e.classList.remove("held")); post("/key", { key: "shift", action: "up" }); }
-        if (modsBefore.ctrl)  { MODS.ctrl  = false; document.querySelectorAll('[data-key="ctrl"]').forEach(e => e.classList.remove("held"));  post("/key", { key: "ctrl",  action: "up" }); }
-        if (modsBefore.alt)   { MODS.alt   = false; document.querySelectorAll('[data-key="alt"]').forEach(e => e.classList.remove("held"));   post("/key", { key: "alt",   action: "up" }); }
+        if (snap.shift) { MODS.shift = false; document.querySelectorAll('[data-key="shift"]').forEach(e => e.classList.remove("held")); post("/key", { key: "shift", action: "up" }); }
+        if (snap.ctrl)  { MODS.ctrl  = false; document.querySelectorAll('[data-key="ctrl"]').forEach(e => e.classList.remove("held"));  post("/key", { key: "ctrl",  action: "up" }); }
+        if (snap.alt)   { MODS.alt   = false; document.querySelectorAll('[data-key="alt"]').forEach(e => e.classList.remove("held"));   post("/key", { key: "alt",   action: "up" }); }
       });
       el.classList.add("active-flash");
       setTimeout(() => el.classList.remove("active-flash"), 100);
-      setStatus(`key: ${k}`);
     }
   });
 });

@@ -132,6 +132,20 @@ def text():
     return jsonify(ok=True, chars=len(txt))
 
 
+@app.route("/prompt", methods=["POST"])
+def prompt():
+    import subprocess
+    d = request.get_json()
+    txt = d.get("text", "")
+    if not txt:
+        return jsonify(ok=False)
+    env = os.environ.copy()
+    env["DISPLAY"] = ":0"
+    subprocess.run(["xdotool", "type", "--clearmodifiers", "--delay", "20", "--", txt], env=env)
+    subprocess.run(["xdotool", "key", "Return"], env=env)
+    return jsonify(ok=True, chars=len(txt))
+
+
 if __name__ == "__main__":
     ip = os.popen("hostname -I").read().split()[0]
     print(f"Phone Input Server running.")
