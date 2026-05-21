@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Pi Gamepad</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
+  body {
+    background: #111;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    height: 100dvh;
+    padding: 20px;
+    user-select: none;
+  }
+  .row { display: flex; gap: 12px; align-items: center; }
+  .btn {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    border: none;
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .btn:active { filter: brightness(1.4); }
+  .dpad { display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 56px); gap: 4px; }
+  .dpad .btn { border-radius: 8px; background: #333; font-size: 22px; }
+  .dpad .empty { background: transparent; }
+  .face .btn { background: #444; }
+  .face .a { background: #c0392b; }
+  .face .b { background: #27ae60; }
+  .face .x { background: #2980b9; }
+  .face .y { background: #f39c12; }
+  .mid { display: flex; gap: 24px; }
+  .mid .btn { width: 52px; height: 28px; border-radius: 14px; background: #333; font-size: 11px; }
+  .shoulder { display: flex; justify-content: space-between; width: 100%; }
+  .shoulder .btn { width: 80px; height: 40px; border-radius: 8px; background: #555; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="shoulder row">
+  <button class="btn" data-btn="l">L</button>
+  <button class="btn" data-btn="r">R</button>
+</div>
+
+<div class="row" style="justify-content:space-between; width:100%">
+  <div class="dpad">
+    <div class="empty"></div>
+    <button class="btn" data-btn="up">▲</button>
+    <div class="empty"></div>
+    <button class="btn" data-btn="left">◀</button>
+    <div class="empty"></div>
+    <button class="btn" data-btn="right">▶</button>
+    <div class="empty"></div>
+    <button class="btn" data-btn="down">▼</button>
+    <div class="empty"></div>
+  </div>
+
+  <div class="mid">
+    <button class="btn" data-btn="select">SEL</button>
+    <button class="btn" data-btn="start">STA</button>
+  </div>
+
+  <div class="face" style="display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);gap:4px">
+    <div></div>
+    <button class="btn x" data-btn="x">X</button>
+    <div></div>
+    <button class="btn y" data-btn="y">Y</button>
+    <div></div>
+    <button class="btn a" data-btn="a">A</button>
+    <div></div>
+    <button class="btn b" data-btn="b">B</button>
+    <div></div>
+  </div>
+</div>
+
+<script>
+function send(btn, action) {
+  fetch("/press", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ button: btn, action })
+  }).catch(() => {});
+}
+
+document.querySelectorAll(".btn[data-btn]").forEach(el => {
+  const btn = el.dataset.btn;
+  el.addEventListener("touchstart", e => { e.preventDefault(); send(btn, "down"); }, { passive: false });
+  el.addEventListener("touchend",   e => { e.preventDefault(); send(btn, "up");   }, { passive: false });
+  el.addEventListener("mousedown",  () => send(btn, "down"));
+  el.addEventListener("mouseup",    () => send(btn, "up"));
+});
+</script>
+</body>
+</html>
