@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Pi Cockpit</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: none; user-select: none; }
+:root {
+  --bg:#06060e; --bg2:#0a0a18; --bg3:#0f0f22;
+  --bdr:#14142e; --dim:#1e1e40;
+  --g:#00e060; --gold:#fd0; --blue:#4af; --red:#e94560; --gray:#888;
+}
+html,body { height:100%; background:var(--bg); color:#eee; font-family:system-ui,sans-serif; overflow:hidden; }
+body { display:flex; flex-direction:column; height:100dvh; }
+
+/* ── HEADER ── */
+#hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; padding-top:max(8px,env(safe-area-inset-top));
+  background:var(--bg2); border-bottom:1px solid var(--bdr); flex-shrink:0;
+}
+#hdr-l { display:flex; align-items:center; gap:9px; }
+#dot { width:9px; height:9px; border-radius:50%; background:var(--g); box-shadow:0 0 6px var(--g); }
+#dot.dead { background:var(--red); box-shadow:0 0 6px var(--red); animation:blink .5s step-end infinite; }
+#title { font-size:12px; font-weight:900; letter-spacing:3px; color:#28285a; font-family:'Courier New',monospace; }
+#hdr-ip { font-size:9px; color:#20204a; font-family:'Courier New',monospace; }
+
+/* ── HEALTH BAR ── */
+#health {
+  display:flex; background:var(--bg2); border-bottom:1px solid var(--bdr); flex-shrink:0;
+}
+.hs {
+  flex:1; padding:5px 4px; text-align:center;
+  border-right:1px solid var(--bdr); font-family:'Courier New',monospace;
+}
+.hs:last-child { border-right:none; }
+.hs-lbl { display:block; font-size:7px; color:#14143a; letter-spacing:.5px; font-weight:700; }
+.hs-val { display:block; font-size:10px; color:#36366a; font-weight:700; margin-top:1px; }
+.hs-val.ok   { color:#1a4a2a; }
+.hs-val.warn { color:#5a4a00; }
+.hs-val.bad  { color:var(--red); animation:blink .6s step-end infinite; }
+@keyframes blink { 50%{opacity:.25} }
+
+/* ── MODE GRID ── */
+#mode-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:10px;
+  padding:12px; flex:1; align-content:start; min-height:0; overflow-y:auto;
+}
+.mc {
+  border:1px solid var(--bdr); border-radius:12px;
+  background:var(--bg2); padding:16px 14px 14px;
+  cursor:pointer; touch-action:manipulation;
+  display:flex; flex-direction:column; gap:5px;
+  position:relative; overflow:hidden; transition:border-color .15s, background .15s;
+}
+.mc::after {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px;
+  background:var(--mc,#333); border-radius:12px 12px 0 0;
+}
+.mc.active  { border-color:var(--mc,#333); background:var(--bg3); }
+.mc.sel     { outline:2px solid var(--mc,#fff); outline-offset:1px; }
+.mc:active  { background:var(--bg3); }
+.mc-icon { font-size:24px; line-height:1; }
+.mc-name { font-size:11px; font-weight:900; letter-spacing:1.5px; font-family:'Courier New',monospace; color:#4a4a7a; }
+.mc.active .mc-name { color:var(--mc,#fff); }
+.mc-desc { font-size:8px; color:#18183a; font-family:'Courier New',monospace; line-height:1.5; }
+.mc-badge { position:absolute; top:10px; right:10px; font-size:7px; font-weight:900; font-family:'Courier New',monospace; color:var(--mc); letter-spacing:1px; display:none; }
+.mc.active .mc-badge { display:block; }
+
+/* ── CTRL ROW ── */
+#ctrl-row {
+  display:flex; align-items:center; gap:8px; padding:7px 12px;
+  border-top:1px solid var(--bdr); background:var(--bg2); flex-shrink:0;
+}
+#boot-info { flex:1; min-width:0; }
+#boot-lbl  { font-size:7px; color:#14143a; font-family:'Courier New',monospace; letter-spacing:.5px; font-weight:700; }
+#boot-val  { font-size:10px; color:#36366a; font-family:'Courier New',monospace; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#btn-default {
+  padding:5px 9px; border-radius:4px; background:var(--bg3); border:1px solid var(--dim);
+  color:#28285a; font-size:8px; font-weight:800; font-family:'Courier New',monospace;
+  cursor:pointer; touch-action:manipulation; white-space:nowrap; flex-shrink:0;
+  transition:color .2s, border-color .2s;
+}
+#btn-default.armed { color:var(--gold); border-color:#fd04; }
+#btn-enter {
+  padding:9px 14px; border-radius:6px; border:1px solid var(--dim);
+  background:var(--bg3); color:#3a3a6a; font-size:10px; font-weight:900;
+  font-family:'Courier New',monospace; cursor:pointer; touch-action:manipulation;
+  white-space:nowrap; flex-shrink:0; transition:color .15s, border-color .15s, background .15s;
+}
+#btn-enter.ready { border-color:var(--g); color:var(--g); background:#00e06010; }
+#btn-enter:active { background:#00e06025; }
+
+/* ── POWER ROW ── */
+#power-row {
+  display:flex; gap:8px; padding:8px 12px;
+  padding-bottom:max(8px,env(safe-area-inset-bottom));
+  background:var(--bg2); border-top:1px solid var(--bdr); flex-shrink:0;
+}
+.pwr {
+  flex:1; padding:11px; border-radius:7px; text-align:center;
+  font-size:10px; font-weight:900; font-family:'Courier New',monospace;
+  cursor:pointer; touch-action:manipulation;
+  border:1px solid var(--bdr); background:var(--bg3); color:#20204a;
+  transition:color .15s, border-color .15s, background .15s;
+}
+.pwr.armed { color:var(--red); border-color:#e9456040; background:#18000a; }
+
+/* ── CONFIRM OVERLAY ── */
+#sw-overlay {
+  position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.72);
+  display:none; align-items:center; justify-content:center; padding:20px;
+}
+#sw-overlay.show { display:flex; }
+#sw-box {
+  background:var(--bg2); border:1px solid var(--bdr); border-radius:12px;
+  padding:22px; width:100%; max-width:320px;
+}
+#sw-title { font-size:13px; font-weight:900; letter-spacing:1px; font-family:'Courier New',monospace; color:#9999ff; margin-bottom:7px; }
+#sw-desc  { font-size:10px; color:#2a2a60; font-family:'Courier New',monospace; margin-bottom:18px; line-height:1.6; }
+#sw-btns  { display:flex; gap:8px; }
+.sw-btn { flex:1; padding:11px; border-radius:6px; text-align:center; font-size:11px; font-weight:900; font-family:'Courier New',monospace; cursor:pointer; touch-action:manipulation; }
+#sw-ok  { background:#14144a; border:1px solid #4444aa; color:#9999ff; }
+#sw-ok:active { background:#20206a; }
+#sw-no  { background:var(--bg3); border:1px solid var(--bdr); color:#333; }
+
+/* ── SWITCHING ── */
+#switching {
+  position:fixed; inset:0; z-index:300; background:var(--bg);
+  display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+}
+#switching.show { display:flex; }
+#sw-spin  { font-size:30px; animation:spin 1s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+#sw-msg { font-size:11px; font-weight:900; letter-spacing:2px; font-family:'Courier New',monospace; color:#4444aa; }
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <div id="hdr-l">
+    <div id="dot"></div>
+    <span id="title">PI COCKPIT</span>
+  </div>
+  <span id="hdr-ip">…</span>
+</div>
+
+<div id="health">
+  <div class="hs"><span class="hs-lbl">TEMP</span><span class="hs-val" id="h-temp">--</span></div>
+  <div class="hs"><span class="hs-lbl">THROT</span><span class="hs-val" id="h-thr">--</span></div>
+  <div class="hs"><span class="hs-lbl">RAM</span><span class="hs-val" id="h-ram">--</span></div>
+  <div class="hs"><span class="hs-lbl">DISK</span><span class="hs-val" id="h-dsk">--</span></div>
+  <div class="hs"><span class="hs-lbl">UP</span><span class="hs-val ok" id="h-up">--</span></div>
+</div>
+
+<div id="mode-grid">
+  <div class="mc" data-mode="claude-dev" style="--mc:#00e060" onclick="tapMode(this)">
+    <div class="mc-badge">● ACTIVE</div>
+    <div class="mc-icon">⌨</div>
+    <div class="mc-name">CLAUDE DEV</div>
+    <div class="mc-desc">Claude Code · keyboard<br>git dashboard · screen</div>
+  </div>
+  <div class="mc" data-mode="gaming" style="--mc:#fd0" onclick="tapMode(this)">
+    <div class="mc-badge">● ACTIVE</div>
+    <div class="mc-icon">◉</div>
+    <div class="mc-name">GAMING</div>
+    <div class="mc-desc">Pegasus Frontend<br>phone gamepad</div>
+  </div>
+  <div class="mc" data-mode="desktop" style="--mc:#4af" onclick="tapMode(this)">
+    <div class="mc-badge">● ACTIVE</div>
+    <div class="mc-icon">▣</div>
+    <div class="mc-name">DESKTOP</div>
+    <div class="mc-desc">Full X11 desktop<br>screen mirror + mouse</div>
+  </div>
+  <div class="mc" data-mode="headless" style="--mc:#888" onclick="tapMode(this)">
+    <div class="mc-badge">● ACTIVE</div>
+    <div class="mc-icon">▪</div>
+    <div class="mc-name">HEADLESS</div>
+    <div class="mc-desc">SSH only<br>no graphical apps</div>
+  </div>
+</div>
+
+<div id="ctrl-row">
+  <div id="boot-info">
+    <div id="boot-lbl">BOOT DEFAULT</div>
+    <div id="boot-val">…</div>
+  </div>
+  <div id="btn-default" onclick="setDefault()">★ SET DEFAULT</div>
+  <div id="btn-enter"   onclick="enterMode()">OPEN →</div>
+</div>
+
+<div id="power-row">
+  <div class="pwr" id="pwr-r"
+       onpointerdown="pwrArm('reboot')"   onpointerup="pwrCancel()" onpointerleave="pwrCancel()">
+    ↺ REBOOT
+  </div>
+  <div class="pwr" id="pwr-s"
+       onpointerdown="pwrArm('shutdown')" onpointerup="pwrCancel()" onpointerleave="pwrCancel()">
+    ⏻ SHUTDOWN
+  </div>
+</div>
+
+<div id="sw-overlay">
+  <div id="sw-box">
+    <div id="sw-title">SWITCH MODE?</div>
+    <div id="sw-desc"></div>
+    <div id="sw-btns">
+      <div class="sw-btn" id="sw-ok" onclick="confirmSwitch()">SWITCH</div>
+      <div class="sw-btn" id="sw-no" onclick="cancelSwitch()">CANCEL</div>
+    </div>
+  </div>
+</div>
+
+<div id="switching">
+  <div id="sw-spin">⟳</div>
+  <div id="sw-msg">SWITCHING…</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+let curMode = null, selMode = null, bootDef = null;
+
+const DESCS = {
+  "claude-dev": "Stops Pegasus · Ensures Claude Code running in tmux",
+  "gaming":     "Stops Claude · Launches Pegasus Frontend",
+  "desktop":    "Keeps X11 running · Opens screen mirror view",
+  "headless":   "Stops graphical apps · SSH access only",
+};
+const LABELS = {
+  "claude-dev":"CLAUDE DEV", "gaming":"GAMING", "desktop":"DESKTOP", "headless":"HEADLESS"
+};
+
+// ── Health ──
+async function pollHealth() {
+  const r = await fetch("/api/sys/info").catch(() => null);
+  if (!r || !r.ok) { $("dot").className = "dead"; return; }
+  $("dot").className = "";
+  const d = await r.json();
+  $("hdr-ip").textContent = d.ip || "";
+
+  const t = $("h-temp"); t.textContent = d.temp != null ? d.temp.toFixed(1)+"°C" : "--";
+  t.className = "hs-val" + (d.temp >= 80 ? " bad" : d.temp >= 70 ? " warn" : " ok");
+
+  const th = $("h-thr");
+  th.textContent = d.throttle_now ? "NOW" : d.throttle_ever ? "PAST" : "OK";
+  th.className = "hs-val" + (d.throttle_now ? " bad" : d.throttle_ever ? " warn" : " ok");
+
+  const rv = $("h-ram"); rv.textContent = d.ram_used_mb+"M";
+  rv.className = "hs-val" + (d.ram_pct >= 90 ? " bad" : d.ram_pct >= 75 ? " warn" : " ok");
+
+  const dv = $("h-dsk"); dv.textContent = d.disk_pct+"%";
+  dv.className = "hs-val" + (d.disk_pct >= 90 ? " bad" : d.disk_pct >= 80 ? " warn" : " ok");
+
+  $("h-up").textContent = d.uptime || "--";
+}
+
+// ── Mode ──
+async function pollMode() {
+  const r = await fetch("/api/mode/status").catch(() => null);
+  if (!r || !r.ok) return;
+  const d = await r.json();
+  curMode = d.mode; bootDef = d.default;
+  if (!selMode) selMode = curMode;
+  document.querySelectorAll(".mc").forEach(el =>
+    el.classList.toggle("active", el.dataset.mode === curMode));
+  $("boot-val").textContent = LABELS[bootDef] || bootDef;
+  updateEnter();
+}
+
+function updateEnter() {
+  const same = selMode === curMode;
+  $("btn-enter").textContent = same ? "OPEN →" : "SWITCH →";
+  $("btn-enter").classList.toggle("ready", true);
+}
+
+function tapMode(el) {
+  const mode = el.dataset.mode;
+  if (mode === curMode) { enterMode(); return; }
+  document.querySelectorAll(".mc").forEach(e => e.classList.remove("sel"));
+  el.classList.add("sel");
+  selMode = mode;
+  updateEnter();
+  navigator.vibrate && navigator.vibrate(15);
+}
+
+function enterMode() {
+  if (!selMode) selMode = curMode;
+  if (selMode === curMode) {
+    const UI_MAP = {"claude-dev":"/claude","gaming":"/gaming","desktop":"/claude","headless":"/"};
+    location.href = (UI_MAP[curMode] || "/") + "?cockpit=1";
+    return;
+  }
+  $("sw-title").textContent = "SWITCH TO " + (LABELS[selMode] || selMode) + "?";
+  $("sw-desc").textContent  = DESCS[selMode] || "";
+  $("sw-overlay").classList.add("show");
+}
+
+async function confirmSwitch() {
+  $("sw-overlay").classList.remove("show");
+  $("switching").classList.add("show");
+  $("sw-msg").textContent = "SWITCHING TO " + (LABELS[selMode]||selMode) + "…";
+  const r = await fetch("/api/mode/switch", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({mode: selMode})
+  }).catch(() => null);
+  if (r && r.ok) {
+    const d = await r.json();
+    curMode = selMode;
+    $("switching").classList.remove("show");
+    pollMode();
+    setTimeout(() => location.href = (d.ui || "/") + "?cockpit=1", 600);
+  } else {
+    $("switching").classList.remove("show");
+    $("sw-msg").textContent = "FAILED";
+  }
+}
+
+function cancelSwitch() {
+  $("sw-overlay").classList.remove("show");
+  selMode = curMode;
+  document.querySelectorAll(".mc").forEach(e => e.classList.remove("sel"));
+  updateEnter();
+}
+
+// ── Boot default ──
+async function setDefault() {
+  if (!curMode) return;
+  $("btn-default").classList.add("armed");
+  await fetch("/api/mode/default", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({mode: curMode})
+  }).catch(() => {});
+  bootDef = curMode;
+  $("boot-val").textContent = LABELS[curMode] || curMode;
+  navigator.vibrate && navigator.vibrate([40,20,40]);
+  setTimeout(() => $("btn-default").classList.remove("armed"), 1200);
+}
+
+// ── Power ──
+let _pwrT = null;
+function pwrArm(action) {
+  const el = action === "reboot" ? $("pwr-r") : $("pwr-s");
+  el.classList.add("armed");
+  _pwrT = setTimeout(async () => {
+    el.textContent = action === "reboot" ? "↺ REBOOTING…" : "⏻ HALT…";
+    await fetch("/power/"+action, {method:"POST"}).catch(() => {});
+    navigator.vibrate && navigator.vibrate([80,40,80]);
+  }, 900);
+}
+function pwrCancel() {
+  clearTimeout(_pwrT);
+  $("pwr-r").classList.remove("armed"); $("pwr-r").textContent = "↺ REBOOT";
+  $("pwr-s").classList.remove("armed"); $("pwr-s").textContent = "⏻ SHUTDOWN";
+}
+
+document.addEventListener("contextmenu", e => e.preventDefault());
+
+pollHealth(); pollMode();
+setInterval(pollHealth, 5000);
+setInterval(pollMode,  12000);
+</script>
+</body>
+</html>

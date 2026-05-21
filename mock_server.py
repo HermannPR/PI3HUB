@@ -7,7 +7,10 @@ from flask import Flask, jsonify, send_from_directory, Response, stream_with_con
 from flask_sock import Sock
 import json, time, os, io, threading
 
-STATIC = os.path.join(os.path.dirname(__file__), "projects/phone-input/static")
+_HERE         = os.path.dirname(__file__)
+STATIC        = os.path.join(_HERE, "projects/cockpit/static")
+PHONE_STATIC  = os.path.join(_HERE, "projects/phone-input/static")
+PAD_STATIC    = os.path.join(_HERE, "projects/pegasus-pad/static")
 app = Flask(__name__, static_folder=STATIC)
 sock = Sock(app)
 
@@ -130,6 +133,63 @@ def current():
 @app.route("/")
 def index():
     return send_from_directory(STATIC, "index.html")
+
+@app.route("/claude")
+def claude_ui():
+    from flask import send_from_directory as sfd
+    return sfd(PHONE_STATIC, "index.html")
+
+@app.route("/gaming")
+def gaming_ui():
+    from flask import send_from_directory as sfd
+    return sfd(PAD_STATIC, "index.html")
+
+# ── Cockpit mock endpoints ──────────────────────────────────────────────────
+_mock_mode = "claude-dev"
+_mock_boot = "claude-dev"
+
+@app.route("/api/sys/info")
+def mock_sys_info():
+    import random
+    return jsonify(
+        ip="192.168.5.241", temp=52.0+random.random()*5,
+        throttle_now=False, throttle_ever=False,
+        ram_used_mb=420, ram_total_mb=927, ram_pct=45,
+        disk_pct=62, uptime="3h14m"
+    )
+
+@app.route("/api/mode/status")
+def mock_mode_status():
+    return jsonify(mode=_mock_mode, default=_mock_boot, modes={
+        "claude-dev": {"label":"CLAUDE DEV","color":"#00e060","ui":"/claude"},
+        "gaming":     {"label":"GAMING",    "color":"#fd0",   "ui":"/gaming"},
+        "desktop":    {"label":"DESKTOP",   "color":"#4af",   "ui":"/claude"},
+        "headless":   {"label":"HEADLESS",  "color":"#888",   "ui":"/"},
+    })
+
+@app.route("/api/mode/switch", methods=["POST"])
+def mock_mode_switch():
+    global _mock_mode
+    d = request.get_json(force=True) or {}
+    _mock_mode = d.get("mode", _mock_mode)
+    UI = {"claude-dev":"/claude","gaming":"/gaming","desktop":"/claude","headless":"/"}
+    return jsonify(ok=True, mode=_mock_mode, ui=UI.get(_mock_mode,"/"))
+
+@app.route("/api/mode/default", methods=["POST"])
+def mock_mode_default():
+    global _mock_boot
+    d = request.get_json(force=True) or {}
+    _mock_boot = d.get("mode", _mock_mode)
+    return jsonify(ok=True, default=_mock_boot)
+
+@app.route("/power/reboot",   methods=["POST"])
+def mock_reboot():   return jsonify(ok=True, note="mock — not rebooting")
+
+@app.route("/power/shutdown", methods=["POST"])
+def mock_shutdown(): return jsonify(ok=True, note="mock — not shutting down")
+
+@app.route("/ping")
+def mock_ping(): return jsonify(ok=True)
 
 @app.route("/claude-state")
 def claude_state():

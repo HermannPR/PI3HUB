@@ -855,6 +855,21 @@ async function mdSave() {
   setTimeout(()=>$("md-status").textContent="",2000);
 }
 
+// ── Cockpit back button ──
+if (new URLSearchParams(location.search).get("cockpit")) {
+  const b = document.createElement("a");
+  b.href = "/"; b.id = "cockpit-back";
+  b.textContent = "← COCKPIT";
+  b.style.cssText = [
+    "position:fixed","top:max(6px,env(safe-area-inset-top))","left:8px",
+    "z-index:9999","font-family:'Courier New',monospace","font-size:9px",
+    "font-weight:800","color:#28285a","text-decoration:none",
+    "background:#06060e","border:1px solid #14142e",
+    "padding:4px 8px","border-radius:4px","letter-spacing:.5px",
+  ].join(";");
+  document.body.appendChild(b);
+}
+
 // ── visualViewport ──
 if(window.visualViewport){
   window.visualViewport.addEventListener("resize",()=>{

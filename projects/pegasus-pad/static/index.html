@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Pegasus Pad</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: none; user-select: none; }
+:root {
+  --bg:  #09090f; --bg2: #0d0d17; --bg3: #13131f;
+  --bdr: #1a1a2e; --dim: #2a2a40;
+  --ca: #00cc55; --cb: #cc3344; --cx: #4488ff; --cy: #ccaa00;
+  --sh: #aaaacc; --dp: #8888aa; --meta: #666688;
+}
+html, body { height: 100%; background: var(--bg); color: #eee; font-family: system-ui, sans-serif; overflow: hidden; }
+body { display: flex; flex-direction: column; height: 100dvh; }
+
+/* ── HEADER ── */
+#hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px; padding-top: max(8px, env(safe-area-inset-top));
+  background: var(--bg2); border-bottom: 1px solid var(--bdr); flex-shrink: 0;
+}
+#hdr-l { display: flex; align-items: center; gap: 8px; }
+#dot { width: 8px; height: 8px; border-radius: 50%; background: #1a1a3a; transition: background .3s; }
+#dot.live { background: var(--ca); box-shadow: 0 0 6px var(--ca); }
+#dot.dead { background: var(--cb); }
+#lbl { font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #3a3a66; font-family: 'Courier New', monospace; }
+
+/* Mode toggle */
+#mode-wrap { display: flex; border: 1px solid var(--bdr); border-radius: 5px; overflow: hidden; }
+.mt { padding: 5px 12px; font-size: 10px; font-weight: 800; letter-spacing: 1px; cursor: pointer;
+  font-family: 'Courier New', monospace; color: #333366; background: var(--bg); transition: .15s; }
+.mt.on { background: #1a1a40; color: #9999ff; }
+
+/* ── SPACER ── */
+#spacer { flex: 1; min-height: 10px; }
+
+/* ── SHOULDER STRIP ── */
+#sh-strip {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  padding: 0 10px 4px; flex-shrink: 0;
+}
+.sh-group { display: flex; gap: 4px; }
+.sh {
+  width: 62px; height: 36px; border-radius: 6px;
+  background: var(--bg3); border: 1px solid var(--dim);
+  color: var(--sh); font-size: 10px; font-weight: 800; letter-spacing: 1px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-family: 'Courier New', monospace;
+  transition: background .08s, color .08s;
+}
+.sh:active, .sh.held { background: #252540; color: #fff; border-color: #5555aa; }
+.sh.l2, .sh.r2 { opacity: .7; }
+
+/* ── MAIN CONTROLS ── */
+#ctrls {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px 10px; gap: 8px; flex-shrink: 0;
+}
+
+/* D-pad */
+#dpad { display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; gap: 3px; width: 145px; height: 145px; flex-shrink: 0; }
+.dp {
+  background: var(--bg3); border: 1px solid var(--dim);
+  color: var(--dp); font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: 5px;
+  transition: background .06s, color .06s;
+}
+.dp:active, .dp.held { background: #202035; color: #fff; border-color: #5555aa; }
+.dp.center { background: transparent; border: 1px solid #15152a; cursor: default; border-radius: 50%; width: 30px; height: 30px; margin: auto; }
+.dp.up    { grid-column: 2; grid-row: 1; border-radius: 6px 6px 2px 2px; }
+.dp.left  { grid-column: 1; grid-row: 2; border-radius: 6px 2px 2px 6px; }
+.dp.ctr   { grid-column: 2; grid-row: 2; }
+.dp.right { grid-column: 3; grid-row: 2; border-radius: 2px 6px 6px 2px; }
+.dp.down  { grid-column: 2; grid-row: 3; border-radius: 2px 2px 6px 6px; }
+
+/* Meta buttons */
+#meta { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; }
+.mb {
+  padding: 8px 10px; border-radius: 16px;
+  background: var(--bg3); border: 1px solid var(--dim);
+  color: var(--meta); font-size: 9px; font-weight: 800; letter-spacing: 1px;
+  cursor: pointer; font-family: 'Courier New', monospace; white-space: nowrap;
+  transition: background .08s, color .08s;
+}
+.mb:active { background: #1a1a35; color: #aaaaff; border-color: #4444aa; }
+#home-btn { border-radius: 50%; width: 34px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+
+/* Face buttons */
+#face { display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; gap: 3px; width: 145px; height: 145px; flex-shrink: 0; }
+.fb {
+  background: var(--bg3); border: 2px solid;
+  font-size: 13px; font-weight: 900; letter-spacing: .5px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: 50%; width: 44px; height: 44px; margin: auto;
+  font-family: 'Courier New', monospace;
+  transition: background .06s, transform .06s;
+}
+.fb:active, .fb.held { transform: scale(.9); }
+.fb.a { color: var(--ca); border-color: #005522; background: #001a0c; grid-column: 2; grid-row: 3; }
+.fb.b { color: var(--cb); border-color: #550011; background: #1a000a; grid-column: 3; grid-row: 2; }
+.fb.x { color: var(--cx); border-color: #112255; background: #000f1a; grid-column: 1; grid-row: 2; }
+.fb.y { color: var(--cy); border-color: #554400; background: #1a1100; grid-column: 2; grid-row: 1; }
+.fb.a:active, .fb.a.held { background: #003316; }
+.fb.b:active, .fb.b.held { background: #330010; }
+.fb.x:active, .fb.x.held { background: #001830; }
+.fb.y:active, .fb.y.held { background: #332200; }
+
+/* ── MODE LABELS ── */
+#mode-hint {
+  text-align: center; font-size: 9px; color: #222240; letter-spacing: 2px;
+  font-family: 'Courier New', monospace; padding: 4px 0 2px;
+  flex-shrink: 0; font-weight: 700;
+}
+#mode-hint span { color: #3a3a70; }
+
+/* ── BOTTOM SAFE ── */
+#safe { flex-shrink: 0; height: max(6px, env(safe-area-inset-bottom)); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="hdr">
+  <div id="hdr-l">
+    <div id="dot"></div>
+    <span id="lbl">PEGASUS PAD</span>
+  </div>
+  <div id="mode-wrap">
+    <div class="mt on" id="mt-peg" onclick="setMode('pegasus')">PEGASUS</div>
+    <div class="mt"    id="mt-game" onclick="setMode('game')">GAME</div>
+  </div>
+</div>
+
+<!-- SPACER -->
+<div id="spacer"></div>
+
+<!-- SHOULDER STRIP -->
+<div id="sh-strip">
+  <div class="sh-group">
+    <div class="sh l2" data-btn="l2">L2</div>
+    <div class="sh l1" data-btn="l1">L1</div>
+  </div>
+  <div class="sh-group">
+    <div class="sh r1" data-btn="r1">R1</div>
+    <div class="sh r2" data-btn="r2">R2</div>
+  </div>
+</div>
+
+<!-- MAIN CONTROLS -->
+<div id="ctrls">
+
+  <!-- D-pad -->
+  <div id="dpad">
+    <div class="dp up"    data-btn="up">▲</div>
+    <div class="dp left"  data-btn="left">◀</div>
+    <div class="dp ctr">◉</div>
+    <div class="dp right" data-btn="right">▶</div>
+    <div class="dp down"  data-btn="down">▼</div>
+  </div>
+
+  <!-- Meta -->
+  <div id="meta">
+    <div class="mb" data-btn="select">SELECT</div>
+    <div class="mb" id="home-btn" data-btn="home">⌂</div>
+    <div class="mb" data-btn="start">START</div>
+  </div>
+
+  <!-- Face buttons -->
+  <div id="face">
+    <div class="fb y" data-btn="y">Y</div>
+    <div class="fb x" data-btn="x">X</div>
+    <div class="fb b" data-btn="b">B</div>
+    <div class="fb a" data-btn="a">A</div>
+  </div>
+
+</div>
+
+<!-- MODE HINT -->
+<div id="mode-hint">
+  <span id="mode-desc">arrows · Enter · Esc · F1/F2 · PgUp/Dn · F5/F6</span>
+</div>
+
+<div id="safe"></div>
+
+<script>
+let mode = "pegasus";
+
+const MODE_DESC = {
+  pegasus: "arrows · Enter · Esc · F1/F2 · PgUp/Dn · F5/F6",
+  game:    "arrows · x/z · s/a · q/w · e/r · Enter/Shift",
+};
+
+function setMode(m) {
+  mode = m;
+  document.getElementById("mt-peg").classList.toggle("on",  m === "pegasus");
+  document.getElementById("mt-game").classList.toggle("on", m === "game");
+  document.getElementById("mode-desc").textContent = MODE_DESC[m];
+  navigator.vibrate && navigator.vibrate(20);
+}
+
+function post(btn, action) {
+  fetch("/btn", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ btn, action, mode }),
+  }).catch(() => {});
+}
+
+// Ping loop — update dot
+(function ping() {
+  fetch("/ping").then(() => {
+    document.getElementById("dot").className = "live";
+  }).catch(() => {
+    document.getElementById("dot").className = "dead";
+  }).finally(() => setTimeout(ping, 3000));
+})();
+
+// ── Button wiring ──
+// Shoulder buttons + meta: simple press (no hold needed for menu nav)
+document.querySelectorAll(".sh[data-btn], .mb[data-btn]").forEach(el => {
+  el.addEventListener("pointerdown", ev => {
+    ev.preventDefault();
+    post(el.dataset.btn, "press");
+    navigator.vibrate && navigator.vibrate(18);
+  });
+});
+
+// D-pad + face buttons: hold support (down/up) for game mode
+document.querySelectorAll(".dp[data-btn], .fb[data-btn]").forEach(el => {
+  const btn = el.dataset.btn;
+
+  el.addEventListener("pointerdown", ev => {
+    ev.preventDefault(); ev.currentTarget.setPointerCapture(ev.pointerId);
+    el.classList.add("held");
+    post(btn, "down");
+    navigator.vibrate && navigator.vibrate(14);
+  });
+
+  el.addEventListener("pointerup", ev => {
+    ev.preventDefault();
+    el.classList.remove("held");
+    post(btn, "up");
+  });
+
+  el.addEventListener("pointercancel", () => {
+    el.classList.remove("held");
+    post(btn, "up");
+  });
+
+  el.addEventListener("pointerleave", ev => {
+    if (el.classList.contains("held")) {
+      el.classList.remove("held");
+      post(btn, "up");
+    }
+  });
+});
+
+// Cockpit back button
+if (new URLSearchParams(location.search).get("cockpit")) {
+  const b = document.createElement("a");
+  b.href = "/"; b.id = "cockpit-back";
+  b.textContent = "← COCKPIT";
+  b.style.cssText = [
+    "position:fixed","top:max(6px,env(safe-area-inset-top))","left:8px",
+    "z-index:9999","font-family:'Courier New',monospace","font-size:9px",
+    "font-weight:800","color:#28285a","text-decoration:none",
+    "background:#09090f","border:1px solid #1a1a2e",
+    "padding:4px 8px","border-radius:4px","letter-spacing:.5px",
+  ].join(";");
+  document.body.appendChild(b);
+}
+
+// Prevent context menu on long press
+document.addEventListener("contextmenu", e => e.preventDefault());
+</script>
+</body>
+</html>
