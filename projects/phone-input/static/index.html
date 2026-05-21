@@ -17,64 +17,66 @@ body {
   overflow: hidden;
 }
 
-/* ── TABS ── */
-#tabs { display: flex; background: #16213e; border-bottom: 2px solid #0f3460; }
+#tabs { display: flex; background: #16213e; border-bottom: 2px solid #0f3460; flex-shrink: 0; }
 .tab {
-  flex: 1; padding: 12px 0; text-align: center;
-  font-size: 13px; font-weight: 600; letter-spacing: .5px;
-  color: #888; cursor: pointer; transition: .15s;
+  flex: 1; padding: 11px 0; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .5px;
+  color: #666; cursor: pointer;
 }
 .tab.active { color: #e94560; border-bottom: 2px solid #e94560; margin-bottom: -2px; }
 
-/* ── PANELS ── */
-.panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.panel { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
 .panel.active { display: flex; }
 
 /* ── TOUCHPAD ── */
-#touchpad {
-  flex: 1;
-  background: #0d0d1a;
-  position: relative;
-  cursor: none;
-}
+#touchpad { flex: 1; background: #0d0d1a; position: relative; }
 #touchpad-hint {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-  text-align: center; color: #333; font-size: 13px; pointer-events: none;
+  text-align: center; color: #2a2a3a; font-size: 13px; pointer-events: none; line-height: 1.8;
 }
-
-#mouse-buttons {
-  display: flex; gap: 1px; background: #0f3460;
-}
+#mouse-buttons { display: flex; gap: 1px; background: #0f3460; flex-shrink: 0; }
 .mbtn {
-  flex: 1; padding: 18px 0; text-align: center;
-  background: #16213e; font-size: 14px; font-weight: 600;
-  color: #ccc; cursor: pointer; transition: background .1s;
+  flex: 1; padding: 16px 0; text-align: center;
+  background: #16213e; font-size: 14px; font-weight: 700; color: #bbb; cursor: pointer;
 }
 .mbtn:active { background: #e94560; color: #fff; }
 
 /* ── KEYBOARD ── */
-#keyboard-panel { background: #0d0d1a; padding: 8px 4px; gap: 5px; }
-
-.kbd-row { display: flex; gap: 4px; justify-content: center; margin-bottom: 4px; }
-
+#keyboard-panel { background: #0d0d1a; padding: 6px 4px 10px; flex-shrink: 0; }
+.kbd-row { display: flex; gap: 3px; justify-content: center; margin-bottom: 3px; }
 .key {
-  height: 44px; min-width: 32px; padding: 0 6px;
-  background: #16213e; border: 1px solid #0f3460;
-  border-radius: 6px; color: #ddd; font-size: 14px; font-weight: 500;
+  height: 42px; min-width: 28px; padding: 0 4px;
+  background: #16213e; border: 1px solid #0f3460; border-radius: 6px;
+  color: #ddd; font-size: 13px; font-weight: 500;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: background .1s; flex: 1; max-width: 48px;
+  cursor: pointer; flex: 1; max-width: 46px;
 }
-.key:active, .key.held { background: #e94560; color: #fff; border-color: #e94560; }
-.key.wide  { max-width: 72px; flex: 1.5; }
-.key.xwide { max-width: 160px; flex: 3; }
+.key.active-flash { background: #e94560; color: #fff; border-color: #e94560; }
+.key.held { background: #0f3460; color: #7eb8ff; border-color: #1a4a8a; }
+.key.wide  { max-width: 70px; flex: 1.5; }
+.key.xwide { max-width: 150px; flex: 3; }
 .key.mod   { background: #1a2a4a; color: #7eb8ff; }
-.key.mod.held { background: #0f3460; }
 
-/* ── STATUS ── */
-#status {
-  padding: 4px 10px; font-size: 11px; color: #555;
-  background: #111; text-align: right; flex-shrink: 0;
+/* ── TEXT ── */
+#text-panel { flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 12px; background: #0d0d1a; }
+#text-panel textarea {
+  flex: 1; background: #16213e; border: 2px solid #0f3460; border-radius: 10px;
+  color: #eee; font-size: 16px; padding: 12px; resize: none;
+  touch-action: auto; user-select: text;
+  outline: none;
 }
+#text-panel textarea:focus { border-color: #e94560; }
+#text-actions { display: flex; gap: 10px; flex-shrink: 0; }
+.txt-btn {
+  flex: 1; padding: 14px; border-radius: 10px; border: none;
+  font-size: 14px; font-weight: 700; cursor: pointer; touch-action: manipulation;
+}
+#btn-send { background: #e94560; color: #fff; }
+#btn-clear { background: #16213e; color: #aaa; border: 1px solid #0f3460; }
+#text-status { font-size: 12px; color: #555; text-align: center; flex-shrink: 0; }
+
+/* ── STATUS BAR ── */
+#status { padding: 3px 10px; font-size: 11px; color: #444; background: #111; text-align: right; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -82,28 +84,28 @@ body {
 <div id="tabs">
   <div class="tab active" onclick="switchTab('touchpad')">TOUCHPAD</div>
   <div class="tab" onclick="switchTab('keyboard')">KEYBOARD</div>
+  <div class="tab" onclick="switchTab('text')">TEXT</div>
 </div>
 
-<!-- TOUCHPAD PANEL -->
+<!-- TOUCHPAD -->
 <div class="panel active" id="panel-touchpad">
   <div id="touchpad">
     <div id="touchpad-hint">
-      Drag → move mouse<br>
-      Tap → left click<br>
-      2-finger drag → scroll<br>
-      2-finger tap → right click
+      Drag · move mouse<br>
+      Tap · left click<br>
+      2-finger drag · scroll<br>
+      2-finger tap · right click
     </div>
   </div>
   <div id="mouse-buttons">
-    <div class="mbtn" id="btn-left"  onpointerdown="mouseBtn('left','down')"  onpointerup="mouseBtn('left','up')">LEFT</div>
-    <div class="mbtn" id="btn-right" onpointerdown="mouseBtn('right','down')" onpointerup="mouseBtn('right','up')">RIGHT</div>
+    <div class="mbtn" onpointerdown="mouseBtn('left','down')"  onpointerup="mouseBtn('left','up')"  onpointerleave="mouseBtn('left','up')">LEFT</div>
+    <div class="mbtn" onpointerdown="mouseBtn('right','down')" onpointerup="mouseBtn('right','up')" onpointerleave="mouseBtn('right','up')">RIGHT</div>
   </div>
 </div>
 
-<!-- KEYBOARD PANEL -->
-<div class="panel" id="panel-keyboard" style="overflow-y:auto">
+<!-- KEYBOARD -->
+<div class="panel" id="panel-keyboard" style="overflow-y:auto; justify-content:flex-end">
   <div id="keyboard-panel">
-
     <div class="kbd-row">
       <div class="key" data-key="esc">Esc</div>
       <div class="key" data-key="1">1</div><div class="key" data-key="2">2</div>
@@ -114,7 +116,6 @@ body {
       <div class="key" data-key="-">-</div><div class="key" data-key="=">=</div>
       <div class="key wide" data-key="backspace">⌫</div>
     </div>
-
     <div class="kbd-row">
       <div class="key wide" data-key="tab">Tab</div>
       <div class="key" data-key="q">Q</div><div class="key" data-key="w">W</div>
@@ -124,7 +125,6 @@ body {
       <div class="key" data-key="o">O</div><div class="key" data-key="p">P</div>
       <div class="key" data-key="[">[</div><div class="key" data-key="]">]</div>
     </div>
-
     <div class="kbd-row">
       <div class="key" data-key="a">A</div><div class="key" data-key="s">S</div>
       <div class="key" data-key="d">D</div><div class="key" data-key="f">F</div>
@@ -132,91 +132,127 @@ body {
       <div class="key" data-key="j">J</div><div class="key" data-key="k">K</div>
       <div class="key" data-key="l">L</div><div class="key" data-key=";">;</div>
       <div class="key" data-key="'">'</div>
-      <div class="key wide" data-key="enter">Enter</div>
+      <div class="key wide" data-key="enter">↵</div>
     </div>
-
     <div class="kbd-row">
-      <div class="key wide mod" data-key="shift" id="key-shift">Shift</div>
+      <div class="key wide mod" data-key="shift">⇧Shift</div>
       <div class="key" data-key="z">Z</div><div class="key" data-key="x">X</div>
       <div class="key" data-key="c">C</div><div class="key" data-key="v">V</div>
       <div class="key" data-key="b">B</div><div class="key" data-key="n">N</div>
       <div class="key" data-key="m">M</div>
       <div class="key" data-key=",">,</div><div class="key" data-key=".">.</div>
       <div class="key" data-key="/">/</div>
-      <div class="key wide mod" data-key="shift">Shift</div>
+      <div class="key wide mod" data-key="shift">⇧</div>
     </div>
-
     <div class="kbd-row">
-      <div class="key wide mod" data-key="ctrl" id="key-ctrl">Ctrl</div>
+      <div class="key wide mod" data-key="ctrl">Ctrl</div>
       <div class="key mod" data-key="alt">Alt</div>
       <div class="key xwide" data-key=" ">SPACE</div>
-      <div class="key mod" data-key="home">Home</div>
-      <div class="key mod" data-key="end">End</div>
+      <div class="key mod" data-key="home">⇱</div>
+      <div class="key mod" data-key="end">⇲</div>
       <div class="key mod" data-key="delete">Del</div>
     </div>
-
     <div class="kbd-row">
       <div class="key wide mod" data-key="up">▲</div>
       <div class="key wide mod" data-key="down">▼</div>
       <div class="key wide mod" data-key="left">◀</div>
       <div class="key wide mod" data-key="right">▶</div>
     </div>
+  </div>
+</div>
 
+<!-- TEXT INPUT -->
+<div class="panel" id="panel-text">
+  <div id="text-panel">
+    <textarea id="text-input" placeholder="Type here using your phone keyboard, then tap SEND to type it on the Pi..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+    <div id="text-actions">
+      <button class="txt-btn" id="btn-clear" onclick="clearText()">CLEAR</button>
+      <button class="txt-btn" id="btn-send" onclick="sendText()">SEND TO PI</button>
+    </div>
+    <div id="text-status">Type in the box · SEND types it on Pi</div>
   </div>
 </div>
 
 <div id="status">Pi Remote · ready</div>
 
 <script>
-const API = "";  // same origin
-let shiftHeld = false, ctrlHeld = false;
-
-// ── Tab switching ──
+// ── Tabs ──
 function switchTab(name) {
-  document.querySelectorAll(".tab").forEach((t,i) => t.classList.toggle("active", ["touchpad","keyboard"][i] === name));
+  document.querySelectorAll(".tab").forEach((t,i) => t.classList.toggle("active", ["touchpad","keyboard","text"][i] === name));
   document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
   document.getElementById("panel-" + name).classList.add("active");
+  if (name === "text") {
+    document.getElementById("text-input").style.touchAction = "auto";
+    document.getElementById("text-input").style.userSelect = "text";
+  }
 }
 
-// ── Status ──
 function setStatus(msg) { document.getElementById("status").textContent = msg; }
 
-// ── POST helpers ──
 function post(path, data) {
   return fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data)
-  }).catch(() => setStatus("connection lost"));
+  }).catch(() => setStatus("⚠ connection lost"));
+}
+
+// ── Text send ──
+function sendText() {
+  const txt = document.getElementById("text-input").value;
+  if (!txt) return;
+  document.getElementById("text-status").textContent = "Sending…";
+  post("/text", { text: txt }).then(() => {
+    document.getElementById("text-status").textContent = `Sent ${txt.length} chars`;
+  });
+}
+function clearText() {
+  document.getElementById("text-input").value = "";
+  document.getElementById("text-status").textContent = "Cleared";
 }
 
 // ── Mouse buttons ──
 function mouseBtn(btn, action) {
   post("/mouse", { btn, action });
-  setStatus(`${btn} ${action}`);
 }
 
-// ── Touchpad ──
+// ── Touchpad — RAF-batched for zero perceptible delay ──
 const pad = document.getElementById("touchpad");
 const hint = document.getElementById("touchpad-hint");
-let touches = {};
-let lastSingle = null;
-let tapTimer = null;
-let moved = false;
-const SPEED = 1.8;
-const TAP_MS = 180;
-const SCROLL_STEP = 18;   // px of two-finger drag to emit one scroll tick
-let scrollAccum = 0;
+
+let touches   = {};
+let pendingDx = 0, pendingDy = 0;   // accumulated since last RAF flush
+let rafId     = null;
+let moved     = false;
+let tapTimer  = null;
+let twoStart  = 0;
+
+const SPEED      = 2.0;
+const TAP_MS     = 180;
+const SCROLL_STEP = 20;
+let scrollAccum  = 0;
+
+// RAF loop — flushes mouse delta at display refresh rate (~60fps)
+function flushMouse() {
+  rafId = null;
+  if (pendingDx || pendingDy) {
+    post("/mouse", { dx: pendingDx, dy: pendingDy });
+    pendingDx = 0; pendingDy = 0;
+  }
+}
+function scheduleFlush() {
+  if (!rafId) rafId = requestAnimationFrame(flushMouse);
+}
 
 pad.addEventListener("touchstart", e => {
   e.preventDefault();
-  hint.style.display = "none";
+  hint.style.opacity = "0";
   for (const t of e.changedTouches) touches[t.identifier] = { x: t.clientX, y: t.clientY };
   if (e.touches.length === 1) {
     moved = false;
-    lastSingle = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    tapTimer = setTimeout(() => tapTimer = null, TAP_MS + 50);
+    tapTimer = setTimeout(() => tapTimer = null, TAP_MS + 60);
   }
+  if (e.touches.length === 2) twoStart = Date.now();
 }, { passive: false });
 
 pad.addEventListener("touchmove", e => {
@@ -227,9 +263,14 @@ pad.addEventListener("touchmove", e => {
     const t = e.touches[0];
     const prev = touches[t.identifier];
     if (!prev) return;
-    const dx = Math.round((t.clientX - prev.x) * SPEED);
-    const dy = Math.round((t.clientY - prev.y) * SPEED);
-    if (dx || dy) { moved = true; post("/mouse", { dx, dy }); }
+    const dx = (t.clientX - prev.x) * SPEED;
+    const dy = (t.clientY - prev.y) * SPEED;
+    if (dx || dy) {
+      pendingDx += dx;
+      pendingDy += dy;
+      moved = true;
+      scheduleFlush();   // batches into next animation frame — no delay
+    }
     touches[t.identifier] = { x: t.clientX, y: t.clientY };
 
   } else if (count === 2) {
@@ -239,9 +280,9 @@ pad.addEventListener("touchmove", e => {
     const avgDy = ((t0.clientY - p0.y) + (t1.clientY - p1.y)) / 2;
     scrollAccum += avgDy;
     if (Math.abs(scrollAccum) >= SCROLL_STEP) {
-      const ticks = Math.trunc(scrollAccum / SCROLL_STEP);
-      post("/mouse", { scroll: ticks > 0 ? -1 : 1 });
-      scrollAccum -= ticks * SCROLL_STEP;
+      const dir = scrollAccum > 0 ? -1 : 1;
+      post("/mouse", { scroll: dir });
+      scrollAccum = 0;
     }
     touches[t0.identifier] = { x: t0.clientX, y: t0.clientY };
     touches[t1.identifier] = { x: t1.clientX, y: t1.clientY };
@@ -251,36 +292,25 @@ pad.addEventListener("touchmove", e => {
 
 pad.addEventListener("touchend", e => {
   e.preventDefault();
-  const count = e.touches.length;
-  const endCount = e.changedTouches.length;
-
-  if (!moved && tapTimer) {
-    if (endCount === 1 && count === 0) {
-      post("/mouse", { btn: "click" });
-      setStatus("left click");
-    }
+  if (!moved && tapTimer && e.changedTouches.length === 1 && e.touches.length === 0) {
+    post("/mouse", { btn: "click" });
+    setStatus("click");
+  }
+  if (e.touches.length === 0 && twoStart && Date.now() - twoStart < TAP_MS && !moved) {
+    post("/mouse", { btn: "rightclick" });
+    setStatus("right click");
   }
   for (const t of e.changedTouches) delete touches[t.identifier];
-  if (e.touches.length === 0) { moved = false; scrollAccum = 0; }
+  if (e.touches.length === 0) { moved = false; scrollAccum = 0; twoStart = 0; }
 }, { passive: false });
 
 pad.addEventListener("touchcancel", e => {
   for (const t of e.changedTouches) delete touches[t.identifier];
-}, { passive: false });
-
-// two-finger tap = right click (separate listener on touchstart/end quick)
-let twoTapStart = 0;
-pad.addEventListener("touchstart", e => { if (e.touches.length === 2) twoTapStart = Date.now(); }, { passive: false });
-pad.addEventListener("touchend", e => {
-  if (e.touches.length === 0 && twoTapStart && Date.now() - twoTapStart < TAP_MS && !moved) {
-    post("/mouse", { btn: "rightclick" });
-    setStatus("right click");
-    twoTapStart = 0;
-  }
+  pendingDx = 0; pendingDy = 0;
 }, { passive: false });
 
 // ── Keyboard ──
-const MODS = { shift: false, ctrl: false };
+const MODS = { shift: false, ctrl: false, alt: false };
 
 document.querySelectorAll(".key[data-key]").forEach(el => {
   const k = el.dataset.key;
@@ -292,16 +322,17 @@ document.querySelectorAll(".key[data-key]").forEach(el => {
       MODS[k] = !MODS[k];
       document.querySelectorAll(`[data-key="${k}"]`).forEach(e => e.classList.toggle("held", MODS[k]));
       post("/key", { key: k, action: MODS[k] ? "down" : "up" });
-      setStatus(`${k} ${MODS[k] ? "held" : "released"}`);
     } else {
+      // release held mods together with key (Shift+A, Ctrl+C, etc.)
+      const modsBefore = { ...MODS };
       post("/key", { key: k, action: "tap" }).then(() => {
-        // release mods after non-mod key if held
-        if (MODS.shift) { MODS.shift = false; document.querySelectorAll('[data-key="shift"]').forEach(e => e.classList.remove("held")); post("/key", { key: "shift", action: "up" }); }
-        if (MODS.ctrl)  { MODS.ctrl  = false; document.querySelectorAll('[data-key="ctrl"]').forEach(e => e.classList.remove("held"));  post("/key", { key: "ctrl",  action: "up" }); }
+        if (modsBefore.shift) { MODS.shift = false; document.querySelectorAll('[data-key="shift"]').forEach(e => e.classList.remove("held")); post("/key", { key: "shift", action: "up" }); }
+        if (modsBefore.ctrl)  { MODS.ctrl  = false; document.querySelectorAll('[data-key="ctrl"]').forEach(e => e.classList.remove("held"));  post("/key", { key: "ctrl",  action: "up" }); }
+        if (modsBefore.alt)   { MODS.alt   = false; document.querySelectorAll('[data-key="alt"]').forEach(e => e.classList.remove("held"));   post("/key", { key: "alt",   action: "up" }); }
       });
+      el.classList.add("active-flash");
+      setTimeout(() => el.classList.remove("active-flash"), 100);
       setStatus(`key: ${k}`);
-      el.classList.add("held");
-      setTimeout(() => el.classList.remove("held"), 120);
     }
   });
 });
