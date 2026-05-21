@@ -56,9 +56,11 @@ body {
 #prompt-panel {
   flex: 1; display: flex; flex-direction: column;
   padding: 14px 14px 12px; gap: 12px; background: #0d0d1a; touch-action: auto;
+  /* height managed by JS visualViewport so send button stays above keyboard */
 }
 #prompt-input {
-  flex: 1; background: #16213e; border: 2px solid #0f3460; border-radius: 12px;
+  flex: 1; min-height: 80px;
+  background: #16213e; border: 2px solid #0f3460; border-radius: 12px;
   color: #eee; font-size: 17px; line-height: 1.5; padding: 14px;
   resize: none; outline: none; touch-action: auto; user-select: text;
   font-family: system-ui, sans-serif;
@@ -291,6 +293,19 @@ pad.addEventListener("touchcancel", e => {
   for (const t of e.changedTouches) delete touches[t.identifier];
   pendingDx = 0; pendingDy = 0;
 }, { passive: false });
+
+// ── Keep prompt panel above virtual keyboard ──
+if (window.visualViewport) {
+  const adjustPrompt = () => {
+    const panel = document.getElementById("panel-prompt");
+    if (!panel.classList.contains("active")) return;
+    const vv = window.visualViewport;
+    const offsetBottom = window.innerHeight - vv.height - vv.offsetTop;
+    document.getElementById("prompt-panel").style.paddingBottom = Math.max(12, offsetBottom + 12) + "px";
+  };
+  window.visualViewport.addEventListener("resize", adjustPrompt);
+  window.visualViewport.addEventListener("scroll", adjustPrompt);
+}
 
 // ── Keyboard ──
 const MODS = { shift: false, ctrl: false, alt: false };

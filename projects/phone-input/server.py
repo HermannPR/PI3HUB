@@ -128,6 +128,7 @@ def text():
         return jsonify(ok=False)
     env = os.environ.copy()
     env["DISPLAY"] = ":0"
+    env["XAUTHORITY"] = "/home/peepo/.Xauthority"
     subprocess.run(["xdotool", "type", "--clearmodifiers", "--delay", "20", "--", txt], env=env)
     return jsonify(ok=True, chars=len(txt))
 
@@ -141,6 +142,7 @@ def prompt():
         return jsonify(ok=False)
     env = os.environ.copy()
     env["DISPLAY"] = ":0"
+    env["XAUTHORITY"] = "/home/peepo/.Xauthority"
     subprocess.run(["xdotool", "type", "--clearmodifiers", "--delay", "20", "--", txt], env=env)
     subprocess.run(["xdotool", "key", "Return"], env=env)
     return jsonify(ok=True, chars=len(txt))
