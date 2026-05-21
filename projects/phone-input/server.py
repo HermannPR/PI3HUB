@@ -575,6 +575,76 @@ def _watch_trust():
 threading.Thread(target=_watch_trust, daemon=True).start()
 
 
+# ── Git dashboard + file editor ───────────────────────────────────────────────
+GIT_DIR = "/media/peepo/KINGSTON/PI3"
+
+
+def _git(*args, cwd=GIT_DIR):
+    r = subprocess.run(["git", "-C", cwd] + list(args),
+                       capture_output=True, text=True, timeout=10)
+    return r.stdout.strip()
+
+
+@app.route("/git/log")
+def git_log():
+    raw = _git("log", "--format=%H|%h|%ar|%s", "-30")
+    commits = []
+    for line in raw.splitlines():
+        parts = line.split("|", 3)
+        if len(parts) == 4:
+            commits.append({"hash": parts[0], "short": parts[1],
+                            "age": parts[2], "msg": parts[3]})
+    branch = _git("rev-parse", "--abbrev-ref", "HEAD")
+    status = _git("status", "--short")
+    return jsonify(commits=commits, branch=branch, status=status)
+
+
+@app.route("/git/show/<commit_hash>")
+def git_show(commit_hash):
+    if not re.match(r'^[0-9a-f]{4,40}$', commit_hash):
+        return jsonify(error="invalid hash"), 400
+    detail = _git("show", "--stat", f"--format=Author: %an%nDate:   %ar%n%n%s%n%n%b",
+                  commit_hash)
+    return jsonify(detail=detail[:6000])
+
+
+@app.route("/git/pull", methods=["POST"])
+def git_pull():
+    r = subprocess.run(["git", "-C", GIT_DIR, "pull"],
+                       capture_output=True, text=True, timeout=30)
+    return jsonify(ok=True, out=(r.stdout + r.stderr)[:500])
+
+
+@app.route("/file")
+def file_read():
+    path = request.args.get("path", "")
+    full = os.path.normpath(os.path.join(GIT_DIR, path.lstrip("/")))
+    if not full.startswith(GIT_DIR):
+        return jsonify(error="forbidden"), 403
+    try:
+        with open(full, encoding="utf-8") as f:
+            return jsonify(content=f.read())
+    except Exception as e:
+        return jsonify(error=str(e)), 404
+
+
+@app.route("/file", methods=["POST"])
+def file_write():
+    d = request.get_json(force=True) or {}
+    path    = d.get("path", "")
+    content = d.get("content", "")
+    full = os.path.normpath(os.path.join(GIT_DIR, path.lstrip("/")))
+    if not full.startswith(GIT_DIR):
+        return jsonify(error="forbidden"), 403
+    try:
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        with open(full, "w", encoding="utf-8") as f:
+            f.write(content)
+        return jsonify(ok=True)
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+
+
 if __name__ == "__main__":
     ip = os.popen("hostname -I").read().split()[0]
     print(f"Phone Input Server running.")

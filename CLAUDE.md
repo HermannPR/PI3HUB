@@ -86,3 +86,32 @@ kdeconnect-cli --list-devices
 - Scripts that touch GPIO: note they may need `sudo`
 - Test with small data before full runs (SD card I/O is slow)
 - For display projects: pygame fullscreen at 30fps is comfortable
+
+## Phone UI — output conventions (tmux 60 cols)
+
+Claude runs in a 60-column tmux pane. Output is parsed and shown
+on a phone. Follow these conventions so the UI auto-detects state:
+
+**Line width:** Keep prose lines under 55 characters.
+Avoid markdown tables — use numbered or bullet lists instead.
+
+**Options → tappable buttons (IMPORTANT):**
+When presenting choices, use a numbered list so the phone
+detects them and shows tap buttons automatically:
+  1. First option
+  2. Second option
+  3. Third option
+
+**Confirmations → yes/no buttons:**
+End confirmation prompts with exactly `[y/n]` on the same line:
+  Proceed? [y/n]
+  Continue with changes? [y/n]
+
+**Completion signals:**
+End successful tasks with `✔ Done.` on its own line.
+End failures with `✗ Failed: <short reason>`.
+
+**Avoid:**
+- Starting lines with `❯` in prose (conflicts with prompt indicator)
+- Wide ASCII tables or horizontal rules longer than 55 chars
+- Markdown bold/italic (`**text**`) — renders as literal asterisks
