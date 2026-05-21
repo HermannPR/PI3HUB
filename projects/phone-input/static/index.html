@@ -8,20 +8,15 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: none; user-select: none; }
 
 body {
-  background: #1a1a2e;
-  color: #eee;
+  background: #1a1a2e; color: #eee;
   font-family: system-ui, sans-serif;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
 }
 
 #tabs { display: flex; background: #16213e; border-bottom: 2px solid #0f3460; flex-shrink: 0; }
 .tab {
-  flex: 1; padding: 11px 0; text-align: center;
-  font-size: 11px; font-weight: 700; letter-spacing: .4px;
-  color: #555; cursor: pointer;
+  flex: 1; padding: 12px 0; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .4px; color: #555; cursor: pointer;
 }
 .tab.active { color: #e94560; border-bottom: 2px solid #e94560; margin-bottom: -2px; }
 
@@ -32,11 +27,11 @@ body {
 #touchpad { flex: 1; background: #0d0d1a; position: relative; }
 #touchpad-hint {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-  text-align: center; color: #2a2a3a; font-size: 13px; pointer-events: none; line-height: 1.8;
+  text-align: center; color: #2a2a3a; font-size: 13px; pointer-events: none; line-height: 1.9;
 }
 #mouse-buttons { display: flex; gap: 1px; background: #0f3460; flex-shrink: 0; }
 .mbtn {
-  flex: 1; padding: 16px 0; text-align: center;
+  flex: 1; padding: 18px 0; text-align: center;
   background: #16213e; font-size: 14px; font-weight: 700; color: #bbb; cursor: pointer;
 }
 .mbtn:active { background: #e94560; color: #fff; }
@@ -57,87 +52,43 @@ body {
 .key.xwide { max-width: 150px; flex: 3; }
 .key.mod   { background: #1a2a4a; color: #7eb8ff; }
 
-/* ── VOICE / PROMPT ── */
-#voice-panel {
+/* ── PROMPT ── */
+#prompt-panel {
   flex: 1; display: flex; flex-direction: column;
-  padding: 14px 14px 10px; gap: 10px; background: #0d0d1a;
-  touch-action: auto;
+  padding: 14px 14px 12px; gap: 12px; background: #0d0d1a; touch-action: auto;
 }
-
-#voice-top { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-
-#lang-toggle {
-  background: #16213e; border: 1px solid #0f3460; border-radius: 8px;
-  color: #7eb8ff; font-size: 13px; font-weight: 700;
-  padding: 8px 12px; cursor: pointer; touch-action: manipulation;
-  flex-shrink: 0;
-}
-
-#voice-status {
-  flex: 1; font-size: 12px; color: #555; text-align: center;
-}
-
-#mic-btn {
-  width: 80px; height: 80px; border-radius: 50%;
-  background: #16213e; border: 3px solid #0f3460;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 36px; cursor: pointer; flex-shrink: 0;
-  touch-action: manipulation;
-  transition: background .15s, border-color .15s, transform .1s;
-  align-self: center;
-}
-#mic-btn.recording {
-  background: #7a0020; border-color: #e94560;
-  animation: pulse 1s infinite;
-}
-@keyframes pulse {
-  0%,100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(233,69,96,.4); }
-  50%      { transform: scale(1.06); box-shadow: 0 0 0 12px rgba(233,69,96,0); }
-}
-
-#interim {
-  font-size: 13px; color: #555; font-style: italic;
-  min-height: 20px; text-align: center; flex-shrink: 0;
-}
-
-#prompt-box {
-  flex: 1; background: #16213e; border: 2px solid #0f3460; border-radius: 10px;
-  color: #eee; font-size: 16px; padding: 12px; resize: none;
-  touch-action: auto; user-select: text; outline: none;
+#prompt-input {
+  flex: 1; background: #16213e; border: 2px solid #0f3460; border-radius: 12px;
+  color: #eee; font-size: 17px; line-height: 1.5; padding: 14px;
+  resize: none; outline: none; touch-action: auto; user-select: text;
   font-family: system-ui, sans-serif;
 }
-#prompt-box:focus { border-color: #e94560; }
+#prompt-input:focus { border-color: #e94560; }
+#prompt-input::placeholder { color: #333; }
 
-#voice-actions { display: flex; gap: 8px; flex-shrink: 0; }
-.vbtn {
-  flex: 1; padding: 13px 6px; border-radius: 10px; border: none;
-  font-size: 13px; font-weight: 700; cursor: pointer;
-  touch-action: manipulation; text-align: center;
-}
-#btn-send-prompt { background: #e94560; color: #fff; flex: 2; font-size: 15px; }
-#btn-send-text   { background: #1a2a4a; color: #7eb8ff; border: 1px solid #0f3460; }
-#btn-clear-voice { background: #16213e; color: #666; border: 1px solid #0f3460; }
+#prompt-actions { display: flex; gap: 10px; flex-shrink: 0; }
 
-/* ── TEXT ── */
-#text-panel {
-  flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 12px;
-  background: #0d0d1a; touch-action: auto;
+#btn-prompt-clear {
+  width: 64px; height: 64px; border-radius: 12px;
+  background: #16213e; border: 1px solid #0f3460;
+  color: #555; font-size: 22px; cursor: pointer; touch-action: manipulation;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
-#text-input {
-  flex: 1; background: #16213e; border: 2px solid #0f3460; border-radius: 10px;
-  color: #eee; font-size: 16px; padding: 12px; resize: none;
-  touch-action: auto; user-select: text; outline: none;
-}
-#text-input:focus { border-color: #e94560; }
-#text-actions { display: flex; gap: 10px; flex-shrink: 0; }
-.txt-btn {
-  flex: 1; padding: 14px; border-radius: 10px; border: none;
-  font-size: 14px; font-weight: 700; cursor: pointer; touch-action: manipulation;
-}
-#btn-send { background: #e94560; color: #fff; }
-#btn-clear { background: #16213e; color: #aaa; border: 1px solid #0f3460; }
+#btn-prompt-clear:active { background: #2a1a1a; color: #e94560; }
 
-#status { padding: 3px 10px; font-size: 11px; color: #444; background: #111; text-align: right; flex-shrink: 0; }
+#btn-prompt-send {
+  flex: 1; height: 64px; border-radius: 12px;
+  background: #e94560; border: none;
+  color: #fff; font-size: 20px; font-weight: 800;
+  cursor: pointer; touch-action: manipulation;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  letter-spacing: .5px;
+}
+#btn-prompt-send:active { background: #c0304e; }
+
+#prompt-status { font-size: 12px; color: #444; text-align: center; flex-shrink: 0; min-height: 18px; }
+
+#status { padding: 3px 10px; font-size: 11px; color: #333; background: #111; text-align: right; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -145,8 +96,7 @@ body {
 <div id="tabs">
   <div class="tab active" onclick="switchTab('touchpad')">TOUCHPAD</div>
   <div class="tab" onclick="switchTab('keyboard')">KEYBOARD</div>
-  <div class="tab" onclick="switchTab('voice')">🎙 VOICE</div>
-  <div class="tab" onclick="switchTab('text')">TEXT</div>
+  <div class="tab" onclick="switchTab('prompt')">PROMPT</div>
 </div>
 
 <!-- TOUCHPAD -->
@@ -195,7 +145,7 @@ body {
       <div class="key wide" data-key="enter">↵</div>
     </div>
     <div class="kbd-row">
-      <div class="key wide mod" data-key="shift">⇧Shift</div>
+      <div class="key wide mod" data-key="shift">⇧ Shift</div>
       <div class="key" data-key="z">Z</div><div class="key" data-key="x">X</div>
       <div class="key" data-key="c">C</div><div class="key" data-key="v">V</div>
       <div class="key" data-key="b">B</div><div class="key" data-key="n">N</div>
@@ -221,51 +171,34 @@ body {
   </div>
 </div>
 
-<!-- VOICE PROMPT -->
-<div class="panel" id="panel-voice">
-  <div id="voice-panel">
-    <div id="voice-top">
-      <button id="lang-toggle" onclick="toggleLang()">EN 🌐</button>
-      <div id="voice-status">Tap mic to speak</div>
+<!-- PROMPT -->
+<div class="panel" id="panel-prompt">
+  <div id="prompt-panel">
+    <textarea id="prompt-input"
+      placeholder="Type your prompt here, then tap SEND ↵"
+      autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="true">
+    </textarea>
+    <div id="prompt-actions">
+      <div id="btn-prompt-clear" onclick="clearPrompt()">✕</div>
+      <div id="btn-prompt-send"  onclick="sendPrompt()">SEND &nbsp;↵</div>
     </div>
-
-    <div id="mic-btn" onclick="toggleMic()">🎙</div>
-
-    <div id="interim"></div>
-
-    <textarea id="prompt-box" placeholder="Transcript appears here. Edit if needed, then send." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
-
-    <div id="voice-actions">
-      <button class="vbtn" id="btn-clear-voice" onclick="clearPrompt()">CLR</button>
-      <button class="vbtn" id="btn-send-text"   onclick="sendPromptText()">SEND</button>
-      <button class="vbtn" id="btn-send-prompt" onclick="sendPrompt()">SEND + ↵</button>
-    </div>
-  </div>
-</div>
-
-<!-- TEXT -->
-<div class="panel" id="panel-text">
-  <div id="text-panel">
-    <textarea id="text-input" placeholder="Type here using phone keyboard, then tap SEND." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
-    <div id="text-actions">
-      <button class="txt-btn" id="btn-clear" onclick="clearText()">CLEAR</button>
-      <button class="txt-btn" id="btn-send"  onclick="sendText()">SEND TO PI</button>
-    </div>
+    <div id="prompt-status"></div>
   </div>
 </div>
 
 <div id="status">Pi Remote · ready</div>
 
 <script>
-// ── Tabs ──
 function switchTab(name) {
-  const names = ["touchpad","keyboard","voice","text"];
+  const names = ["touchpad","keyboard","prompt"];
   document.querySelectorAll(".tab").forEach((t,i) => t.classList.toggle("active", names[i] === name));
   document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
   document.getElementById("panel-" + name).classList.add("active");
+  if (name === "prompt") setTimeout(() => document.getElementById("prompt-input").focus(), 100);
 }
 
 function setStatus(msg) { document.getElementById("status").textContent = msg; }
+function setPromptStatus(msg) { document.getElementById("prompt-status").textContent = msg; }
 
 function post(path, data) {
   return fetch(path, {
@@ -275,111 +208,28 @@ function post(path, data) {
   }).catch(() => setStatus("⚠ lost connection"));
 }
 
-// ── Speech recognition ──
-const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-let rec = null, recActive = false;
-let lang = "en-US";
-
-function toggleLang() {
-  lang = lang === "en-US" ? "es-MX" : "en-US";
-  document.getElementById("lang-toggle").textContent = lang === "en-US" ? "EN 🌐" : "ES 🌐";
-  if (recActive) { stopMic(); startMic(); }
-}
-
-function toggleMic() {
-  if (recActive) stopMic(); else startMic();
-}
-
-function startMic() {
-  if (!SpeechRec) {
-    document.getElementById("voice-status").textContent = "Speech not supported on this browser. Use Chrome.";
-    return;
-  }
-  rec = new SpeechRec();
-  rec.lang = lang;
-  rec.continuous = false;
-  rec.interimResults = true;
-
-  rec.onstart = () => {
-    recActive = true;
-    document.getElementById("mic-btn").classList.add("recording");
-    document.getElementById("mic-btn").textContent = "⏹";
-    document.getElementById("voice-status").textContent = "Listening…";
-    document.getElementById("interim").textContent = "";
-  };
-
-  rec.onresult = e => {
-    let interim = "", final = "";
-    for (const r of e.results) {
-      if (r.isFinal) final += r[0].transcript;
-      else interim += r[0].transcript;
-    }
-    document.getElementById("interim").textContent = interim;
-    if (final) {
-      const box = document.getElementById("prompt-box");
-      box.value = (box.value ? box.value + " " : "") + final.trim();
-      document.getElementById("interim").textContent = "";
-    }
-  };
-
-  rec.onerror = e => {
-    document.getElementById("voice-status").textContent = "Error: " + e.error;
-    stopMic();
-  };
-
-  rec.onend = () => {
-    stopMic();
-    document.getElementById("voice-status").textContent = "Done. Edit text or send.";
-  };
-
-  rec.start();
-}
-
-function stopMic() {
-  recActive = false;
-  if (rec) { try { rec.stop(); } catch(e) {} rec = null; }
-  document.getElementById("mic-btn").classList.remove("recording");
-  document.getElementById("mic-btn").textContent = "🎙";
+// ── Prompt ──
+function sendPrompt() {
+  const txt = document.getElementById("prompt-input").value.trim();
+  if (!txt) return;
+  setPromptStatus("Sending…");
+  post("/prompt", { text: txt }).then(() => {
+    setPromptStatus("Sent ✓");
+    document.getElementById("prompt-input").value = "";
+    setTimeout(() => setPromptStatus(""), 2000);
+  });
 }
 
 function clearPrompt() {
-  document.getElementById("prompt-box").value = "";
-  document.getElementById("interim").textContent = "";
-  document.getElementById("voice-status").textContent = "Tap mic to speak";
+  document.getElementById("prompt-input").value = "";
+  setPromptStatus("");
 }
-
-function sendPrompt() {
-  const txt = document.getElementById("prompt-box").value.trim();
-  if (!txt) return;
-  document.getElementById("voice-status").textContent = "Sending…";
-  post("/prompt", { text: txt }).then(() => {
-    document.getElementById("voice-status").textContent = "Sent ✓ — Claude Code got it";
-    document.getElementById("prompt-box").value = "";
-  });
-}
-
-function sendPromptText() {
-  const txt = document.getElementById("prompt-box").value.trim();
-  if (!txt) return;
-  document.getElementById("voice-status").textContent = "Sending…";
-  post("/text", { text: txt }).then(() => {
-    document.getElementById("voice-status").textContent = "Typed ✓";
-  });
-}
-
-// ── Text tab ──
-function sendText() {
-  const txt = document.getElementById("text-input").value;
-  if (!txt) return;
-  post("/text", { text: txt }).then(() => setStatus("Sent " + txt.length + " chars"));
-}
-function clearText() { document.getElementById("text-input").value = ""; }
 
 // ── Mouse buttons ──
 function mouseBtn(btn, action) { post("/mouse", { btn, action }); }
 
 // ── Touchpad (RAF-batched) ──
-const pad = document.getElementById("touchpad");
+const pad  = document.getElementById("touchpad");
 const hint = document.getElementById("touchpad-hint");
 let touches = {}, pendingDx = 0, pendingDy = 0, rafId = null;
 let moved = false, tapTimer = null, twoStart = 0, scrollAccum = 0;
