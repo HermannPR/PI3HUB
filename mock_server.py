@@ -180,12 +180,72 @@ def audio_stream():
     return Response(stream_with_context(gen()), mimetype="audio/mpeg",
                     headers={"Cache-Control": "no-cache"})
 
-# All write endpoints — just ack
-_ok = {"ok": True, "enabled": True, "vol": 80, "chars": 0}
+# Screen toggle — tracks state properly
+_scr_on = False
+@app.route("/screen-toggle", methods=["POST"])
+def mock_screen_toggle():
+    global _scr_on
+    _scr_on = not _scr_on
+    return jsonify(ok=True, enabled=_scr_on)
+
+# All other write endpoints — just ack
+_ok = {"ok": True, "vol": 80, "chars": 0}
 for _p in ["/mouse","/key","/text","/prompt","/choose",
-           "/screen-toggle","/screen-input","/audio-volume","/claude-restart"]:
+           "/screen-input","/audio-volume","/claude-restart"]:
     app.add_url_rule(_p, "mock"+_p.replace("/","_"),
                      lambda: jsonify(**_ok), methods=["POST"])
+
+# ── Git + file mock endpoints ─────────────────────────────────────────────────
+import subprocess as _sp, os as _os
+
+_MOCK_GIT = _os.path.dirname(__file__)   # use local repo for realistic data
+
+@app.route("/git/log")
+def mock_git_log():
+    try:
+        raw = _sp.run(["git","-C",_MOCK_GIT,"log","--format=%H|%h|%ar|%s","-20"],
+                      capture_output=True, text=True, timeout=5).stdout.strip()
+        commits = []
+        for line in raw.splitlines():
+            p = line.split("|",3)
+            if len(p)==4: commits.append({"hash":p[0],"short":p[1],"age":p[2],"msg":p[3]})
+        branch = _sp.run(["git","-C",_MOCK_GIT,"rev-parse","--abbrev-ref","HEAD"],
+                         capture_output=True, text=True).stdout.strip()
+        status = _sp.run(["git","-C",_MOCK_GIT,"status","--short"],
+                         capture_output=True, text=True).stdout.strip()
+        return jsonify(commits=commits, branch=branch, status=status)
+    except Exception as e:
+        return jsonify(commits=[], branch="mock", status="", error=str(e))
+
+@app.route("/git/show/<commit_hash>")
+def mock_git_show(commit_hash):
+    import re
+    if not re.match(r'^[0-9a-f]{4,40}$', commit_hash):
+        return jsonify(error="invalid hash"), 400
+    try:
+        detail = _sp.run(["git","-C",_MOCK_GIT,"show","--stat",
+                          f"--format=Author: %an%nDate:   %ar%n%n%s%n%n%b", commit_hash],
+                         capture_output=True, text=True, timeout=5).stdout[:6000]
+        return jsonify(detail=detail)
+    except Exception as e:
+        return jsonify(detail=str(e))
+
+@app.route("/git/pull", methods=["POST"])
+def mock_git_pull():
+    return jsonify(ok=True, out="Already up to date. (mock)")
+
+@app.route("/file")
+def mock_file_read():
+    path = request.args.get("path","")
+    full = _os.path.normpath(_os.path.join(_MOCK_GIT, path.lstrip("/")))
+    if not full.startswith(_MOCK_GIT): return jsonify(error="forbidden"), 403
+    try:
+        with open(full, encoding="utf-8") as f: return jsonify(content=f.read())
+    except Exception as e: return jsonify(error=str(e)), 404
+
+@app.route("/file", methods=["POST"])
+def mock_file_write():
+    return jsonify(ok=True, note="mock — file not written to disk")
 
 @sock.route("/ws")
 def ws_mock(ws):

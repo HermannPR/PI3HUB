@@ -168,6 +168,33 @@ body { background: var(--bg); color: #eee; font-family: system-ui, sans-serif; h
 .ssb:active { background: #222; color: var(--red); }
 
 audio { display: none; }
+
+/* GIT DRAWER */
+#git-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.gtab { flex: 1; padding: 7px; text-align: center; font-size: 10px; font-weight: 700; font-family: 'Courier New', monospace; color: #1a3a1a; cursor: pointer; touch-action: manipulation; }
+.gtab.on { color: var(--g); border-bottom: 2px solid var(--g); }
+#git-status-bar { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg2); }
+#git-branch { font-family: 'Courier New', monospace; font-size: 10px; color: var(--gold); font-weight: 700; }
+#git-dirty { font-size: 9px; color: #444420; flex: 1; font-family: 'Courier New', monospace; }
+.git-act { padding: 4px 8px; border-radius: 3px; background: var(--bg); border: 1px solid #00e06028; color: #006a30; font-size: 9px; font-weight: 700; font-family: 'Courier New', monospace; cursor: pointer; touch-action: manipulation; }
+.git-act:active { background: #00e06015; color: var(--g); }
+#git-commits { overflow-y: auto; }
+.gc { padding: 8px 10px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.gc:active { background: #0a1a0a; }
+.gc-head { display: flex; gap: 8px; margin-bottom: 2px; }
+.gc-hash { font-family: 'Courier New', monospace; font-size: 9px; color: var(--gd); font-weight: 700; }
+.gc-age  { font-size: 9px; color: #222240; font-family: 'Courier New', monospace; }
+.gc-msg  { font-size: 11px; color: #7a9a7a; font-family: 'Courier New', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gc-diff { font-size: 8px; color: #005a20; font-family: 'Courier New', monospace; white-space: pre-wrap; word-break: break-all; padding: 6px 10px; background: var(--bg2); border-top: 1px solid var(--border); margin: 4px -10px -8px; display: none; }
+.gc.open .gc-msg { color: var(--g); }
+.gc.open .gc-diff { display: block; }
+#git-md-view { display: none; flex-direction: column; flex: 1; min-height: 0; }
+#git-md-view.show { display: flex; }
+#md-actions { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg2); }
+#md-save { padding: 5px 14px; border-radius: 3px; background: var(--gd); color: #000; font-size: 10px; font-weight: 800; font-family: 'Courier New', monospace; cursor: pointer; touch-action: manipulation; }
+#md-save:active { background: #005a20; color: var(--g); }
+#md-status { font-size: 9px; color: #444420; font-family: 'Courier New', monospace; flex: 1; }
+#md-editor { flex: 1; background: var(--bg); border: none; color: var(--g); font-size: 10px; line-height: 1.5; padding: 8px 10px; outline: none; resize: none; font-family: 'Courier New', monospace; touch-action: auto; user-select: text; caret-color: var(--g); min-height: 180px; }
 </style>
 </head>
 <body>
@@ -231,6 +258,7 @@ audio { display: none; }
   <div class="tb" id="tbtn-keys"   onclick="drw('keys')">KEYS</div>
   <div class="tb" id="tbtn-prompt" onclick="drw('prompt')">PROMPT</div>
   <div class="tb" id="tbtn-yt"     onclick="drw('yt')">YT</div>
+  <div class="tb" id="tbtn-git"    onclick="drw('git')">GIT</div>
 </div>
 
 <div id="bd" onclick="closeDrw()"></div>
@@ -331,6 +359,34 @@ audio { display: none; }
   </div></div>
 </div>
 
+<!-- GIT DRAWER -->
+<div class="drawer" id="d-git">
+  <div class="dh">▼ GIT — swipe down to close</div>
+  <div id="git-tabs">
+    <div class="gtab on" id="gtab-log" onclick="gitTab('log')">LOG</div>
+    <div class="gtab"    id="gtab-md"  onclick="gitTab('md')">CLAUDE.MD</div>
+  </div>
+  <!-- LOG view -->
+  <div style="display:flex;flex-direction:column;flex:1;min-height:0;" id="git-log-view">
+    <div id="git-status-bar">
+      <span id="git-branch">…</span>
+      <span id="git-dirty"></span>
+      <div class="git-act" onclick="gitPull()">↓ PULL</div>
+      <div class="git-act" onclick="gitLoad()" style="padding:4px 6px;">↺</div>
+    </div>
+    <div class="db" id="git-commits"><div style="color:#1a3a1a;padding:12px;font-family:monospace;font-size:10px;">Tap GIT to load…</div></div>
+  </div>
+  <!-- CLAUDE.MD editor -->
+  <div id="git-md-view">
+    <div id="md-actions">
+      <div id="md-save" onclick="mdSave()">SAVE</div>
+      <span id="md-status"></span>
+      <div class="git-act" onclick="mdLoad()">↺ RELOAD</div>
+    </div>
+    <textarea id="md-editor" placeholder="Loading CLAUDE.md…"></textarea>
+  </div>
+</div>
+
 <!-- SCREEN OVERLAY -->
 <div id="scr-wrap">
   <div id="scr-hdr">
@@ -380,7 +436,8 @@ function drw(name) {
   document.querySelectorAll(".tb").forEach(b=>b.classList.remove("open"));
   $("tbtn-"+name).classList.add("open");
   if (name==="prompt") setTimeout(()=>$("pi").focus(),150);
-  if (name==="yt") setTimeout(()=>$("ytu").focus(),150);
+  if (name==="yt")     setTimeout(()=>$("ytu").focus(),150);
+  if (name==="git")    gitOnOpen();
 }
 function closeDrw() {
   if (curDrw) { $("d-"+curDrw).classList.remove("open"); curDrw=null; }
@@ -722,6 +779,80 @@ function ytCmd(tpl) {
   if(!u){$("ytst").textContent="Paste URL first";return;}
   post("/prompt",{text:tpl.replace("{url}",u)}).then(()=>{ $("ytst").textContent="Sent ✓"; setTimeout(()=>{ $("ytst").textContent=""; closeDrw(); },1200); });
   navigator.vibrate&&navigator.vibrate(35);
+}
+
+// ── Git dashboard ──
+let _gitLoaded=false, _mdLoaded=false, _gitTab='log';
+
+function gitOnOpen() {
+  if (!_gitLoaded) gitLoad();
+  if (_gitTab==='md' && !_mdLoaded) mdLoad();
+}
+
+function gitTab(t) {
+  _gitTab = t;
+  $("gtab-log").classList.toggle("on", t==="log");
+  $("gtab-md").classList.toggle("on",  t==="md");
+  $("git-log-view").style.display = t==="log" ? "" : "none";
+  $("git-md-view").classList.toggle("show", t==="md");
+  if (t==="md" && !_mdLoaded) mdLoad();
+}
+
+async function gitLoad() {
+  $("git-commits").innerHTML='<div style="color:#1a3a1a;padding:12px;font-family:monospace;font-size:10px;">Loading…</div>';
+  const r = await fetch("/git/log").catch(()=>null);
+  if (!r || !r.ok) { $("git-commits").innerHTML='<div style="color:#e94560;padding:12px;font-size:10px;">Error — is server on Pi?</div>'; return; }
+  const d = await r.json();
+  $("git-branch").textContent = d.branch || "?";
+  const lines = (d.status||"").trim().split("\n").filter(Boolean);
+  $("git-dirty").textContent = lines.length ? lines.length+" changed" : "clean";
+  const el=$("git-commits"); el.innerHTML="";
+  (d.commits||[]).forEach(c=>{
+    const item=document.createElement("div"); item.className="gc";
+    item.innerHTML=`<div class="gc-head"><span class="gc-hash">${c.short}</span><span class="gc-age">${c.age}</span></div><div class="gc-msg">${c.msg.replace(/</g,"&lt;")}</div><pre class="gc-diff" id="gcd-${c.hash}"></pre>`;
+    item.addEventListener("click",async()=>{
+      const open=item.classList.contains("open");
+      if(!open){
+        const pre=$("gcd-"+c.hash);
+        if(!pre.textContent){
+          pre.textContent="Loading…";
+          const dr=await fetch("/git/show/"+c.hash).catch(()=>null);
+          pre.textContent = dr&&dr.ok ? (await dr.json()).detail||"(empty)" : "Error";
+        }
+      }
+      item.classList.toggle("open",!open);
+    });
+    el.appendChild(item);
+  });
+  _gitLoaded=true;
+}
+
+async function gitPull() {
+  const btn=document.querySelector("#git-status-bar .git-act");
+  btn.textContent="↓ …";
+  const r=await fetch("/git/pull",{method:"POST"}).catch(()=>null);
+  btn.textContent="↓ PULL";
+  if(r&&r.ok){
+    const d=await r.json();
+    $("git-dirty").textContent=(d.out||"").split("\n")[0].substring(0,24)||"done";
+    setTimeout(()=>{ _gitLoaded=false; gitLoad(); },1200);
+  }
+}
+
+// CLAUDE.MD editor
+async function mdLoad() {
+  $("md-editor").value="Loading…";
+  const r=await fetch("/file?path=CLAUDE.md").catch(()=>null);
+  if(r&&r.ok){ $("md-editor").value=(await r.json()).content||""; _mdLoaded=true; }
+  else $("md-editor").value="Error loading file";
+}
+
+async function mdSave() {
+  $("md-status").textContent="Saving…";
+  const r=await fetch("/file",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({path:"CLAUDE.md",content:$("md-editor").value})}).catch(()=>null);
+  $("md-status").textContent=r&&r.ok?"Saved ✔":"Error ✗";
+  setTimeout(()=>$("md-status").textContent="",2000);
 }
 
 // ── visualViewport ──
