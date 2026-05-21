@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Pi Remote</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: none; user-select: none; }
+
+body {
+  background: #1a1a2e;
+  color: #eee;
+  font-family: system-ui, sans-serif;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── TABS ── */
+#tabs { display: flex; background: #16213e; border-bottom: 2px solid #0f3460; }
+.tab {
+  flex: 1; padding: 12px 0; text-align: center;
+  font-size: 13px; font-weight: 600; letter-spacing: .5px;
+  color: #888; cursor: pointer; transition: .15s;
+}
+.tab.active { color: #e94560; border-bottom: 2px solid #e94560; margin-bottom: -2px; }
+
+/* ── PANELS ── */
+.panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.panel.active { display: flex; }
+
+/* ── TOUCHPAD ── */
+#touchpad {
+  flex: 1;
+  background: #0d0d1a;
+  position: relative;
+  cursor: none;
+}
+#touchpad-hint {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  text-align: center; color: #333; font-size: 13px; pointer-events: none;
+}
+
+#mouse-buttons {
+  display: flex; gap: 1px; background: #0f3460;
+}
+.mbtn {
+  flex: 1; padding: 18px 0; text-align: center;
+  background: #16213e; font-size: 14px; font-weight: 600;
+  color: #ccc; cursor: pointer; transition: background .1s;
+}
+.mbtn:active { background: #e94560; color: #fff; }
+
+/* ── KEYBOARD ── */
+#keyboard-panel { background: #0d0d1a; padding: 8px 4px; gap: 5px; }
+
+.kbd-row { display: flex; gap: 4px; justify-content: center; margin-bottom: 4px; }
+
+.key {
+  height: 44px; min-width: 32px; padding: 0 6px;
+  background: #16213e; border: 1px solid #0f3460;
+  border-radius: 6px; color: #ddd; font-size: 14px; font-weight: 500;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .1s; flex: 1; max-width: 48px;
+}
+.key:active, .key.held { background: #e94560; color: #fff; border-color: #e94560; }
+.key.wide  { max-width: 72px; flex: 1.5; }
+.key.xwide { max-width: 160px; flex: 3; }
+.key.mod   { background: #1a2a4a; color: #7eb8ff; }
+.key.mod.held { background: #0f3460; }
+
+/* ── STATUS ── */
+#status {
+  padding: 4px 10px; font-size: 11px; color: #555;
+  background: #111; text-align: right; flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+
+<div id="tabs">
+  <div class="tab active" onclick="switchTab('touchpad')">TOUCHPAD</div>
+  <div class="tab" onclick="switchTab('keyboard')">KEYBOARD</div>
+</div>
+
+<!-- TOUCHPAD PANEL -->
+<div class="panel active" id="panel-touchpad">
+  <div id="touchpad">
+    <div id="touchpad-hint">
+      Drag → move mouse<br>
+      Tap → left click<br>
+      2-finger drag → scroll<br>
+      2-finger tap → right click
+    </div>
+  </div>
+  <div id="mouse-buttons">
+    <div class="mbtn" id="btn-left"  onpointerdown="mouseBtn('left','down')"  onpointerup="mouseBtn('left','up')">LEFT</div>
+    <div class="mbtn" id="btn-right" onpointerdown="mouseBtn('right','down')" onpointerup="mouseBtn('right','up')">RIGHT</div>
+  </div>
+</div>
+
+<!-- KEYBOARD PANEL -->
+<div class="panel" id="panel-keyboard" style="overflow-y:auto">
+  <div id="keyboard-panel">
+
+    <div class="kbd-row">
+      <div class="key" data-key="esc">Esc</div>
+      <div class="key" data-key="1">1</div><div class="key" data-key="2">2</div>
+      <div class="key" data-key="3">3</div><div class="key" data-key="4">4</div>
+      <div class="key" data-key="5">5</div><div class="key" data-key="6">6</div>
+      <div class="key" data-key="7">7</div><div class="key" data-key="8">8</div>
+      <div class="key" data-key="9">9</div><div class="key" data-key="0">0</div>
+      <div class="key" data-key="-">-</div><div class="key" data-key="=">=</div>
+      <div class="key wide" data-key="backspace">⌫</div>
+    </div>
+
+    <div class="kbd-row">
+      <div class="key wide" data-key="tab">Tab</div>
+      <div class="key" data-key="q">Q</div><div class="key" data-key="w">W</div>
+      <div class="key" data-key="e">E</div><div class="key" data-key="r">R</div>
+      <div class="key" data-key="t">T</div><div class="key" data-key="y">Y</div>
+      <div class="key" data-key="u">U</div><div class="key" data-key="i">I</div>
+      <div class="key" data-key="o">O</div><div class="key" data-key="p">P</div>
+      <div class="key" data-key="[">[</div><div class="key" data-key="]">]</div>
+    </div>
+
+    <div class="kbd-row">
+      <div class="key" data-key="a">A</div><div class="key" data-key="s">S</div>
+      <div class="key" data-key="d">D</div><div class="key" data-key="f">F</div>
+      <div class="key" data-key="g">G</div><div class="key" data-key="h">H</div>
+      <div class="key" data-key="j">J</div><div class="key" data-key="k">K</div>
+      <div class="key" data-key="l">L</div><div class="key" data-key=";">;</div>
+      <div class="key" data-key="'">'</div>
+      <div class="key wide" data-key="enter">Enter</div>
+    </div>
+
+    <div class="kbd-row">
+      <div class="key wide mod" data-key="shift" id="key-shift">Shift</div>
+      <div class="key" data-key="z">Z</div><div class="key" data-key="x">X</div>
+      <div class="key" data-key="c">C</div><div class="key" data-key="v">V</div>
+      <div class="key" data-key="b">B</div><div class="key" data-key="n">N</div>
+      <div class="key" data-key="m">M</div>
+      <div class="key" data-key=",">,</div><div class="key" data-key=".">.</div>
+      <div class="key" data-key="/">/</div>
+      <div class="key wide mod" data-key="shift">Shift</div>
+    </div>
+
+    <div class="kbd-row">
+      <div class="key wide mod" data-key="ctrl" id="key-ctrl">Ctrl</div>
+      <div class="key mod" data-key="alt">Alt</div>
+      <div class="key xwide" data-key=" ">SPACE</div>
+      <div class="key mod" data-key="home">Home</div>
+      <div class="key mod" data-key="end">End</div>
+      <div class="key mod" data-key="delete">Del</div>
+    </div>
+
+    <div class="kbd-row">
+      <div class="key wide mod" data-key="up">▲</div>
+      <div class="key wide mod" data-key="down">▼</div>
+      <div class="key wide mod" data-key="left">◀</div>
+      <div class="key wide mod" data-key="right">▶</div>
+    </div>
+
+  </div>
+</div>
+
+<div id="status">Pi Remote · ready</div>
+
+<script>
+const API = "";  // same origin
+let shiftHeld = false, ctrlHeld = false;
+
+// ── Tab switching ──
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach((t,i) => t.classList.toggle("active", ["touchpad","keyboard"][i] === name));
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  document.getElementById("panel-" + name).classList.add("active");
+}
+
+// ── Status ──
+function setStatus(msg) { document.getElementById("status").textContent = msg; }
+
+// ── POST helpers ──
+function post(path, data) {
+  return fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  }).catch(() => setStatus("connection lost"));
+}
+
+// ── Mouse buttons ──
+function mouseBtn(btn, action) {
+  post("/mouse", { btn, action });
+  setStatus(`${btn} ${action}`);
+}
+
+// ── Touchpad ──
+const pad = document.getElementById("touchpad");
+const hint = document.getElementById("touchpad-hint");
+let touches = {};
+let lastSingle = null;
+let tapTimer = null;
+let moved = false;
+const SPEED = 1.8;
+const TAP_MS = 180;
+const SCROLL_STEP = 18;   // px of two-finger drag to emit one scroll tick
+let scrollAccum = 0;
+
+pad.addEventListener("touchstart", e => {
+  e.preventDefault();
+  hint.style.display = "none";
+  for (const t of e.changedTouches) touches[t.identifier] = { x: t.clientX, y: t.clientY };
+  if (e.touches.length === 1) {
+    moved = false;
+    lastSingle = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    tapTimer = setTimeout(() => tapTimer = null, TAP_MS + 50);
+  }
+}, { passive: false });
+
+pad.addEventListener("touchmove", e => {
+  e.preventDefault();
+  const count = e.touches.length;
+
+  if (count === 1) {
+    const t = e.touches[0];
+    const prev = touches[t.identifier];
+    if (!prev) return;
+    const dx = Math.round((t.clientX - prev.x) * SPEED);
+    const dy = Math.round((t.clientY - prev.y) * SPEED);
+    if (dx || dy) { moved = true; post("/mouse", { dx, dy }); }
+    touches[t.identifier] = { x: t.clientX, y: t.clientY };
+
+  } else if (count === 2) {
+    const t0 = e.touches[0], t1 = e.touches[1];
+    const p0 = touches[t0.identifier], p1 = touches[t1.identifier];
+    if (!p0 || !p1) return;
+    const avgDy = ((t0.clientY - p0.y) + (t1.clientY - p1.y)) / 2;
+    scrollAccum += avgDy;
+    if (Math.abs(scrollAccum) >= SCROLL_STEP) {
+      const ticks = Math.trunc(scrollAccum / SCROLL_STEP);
+      post("/mouse", { scroll: ticks > 0 ? -1 : 1 });
+      scrollAccum -= ticks * SCROLL_STEP;
+    }
+    touches[t0.identifier] = { x: t0.clientX, y: t0.clientY };
+    touches[t1.identifier] = { x: t1.clientX, y: t1.clientY };
+    moved = true;
+  }
+}, { passive: false });
+
+pad.addEventListener("touchend", e => {
+  e.preventDefault();
+  const count = e.touches.length;
+  const endCount = e.changedTouches.length;
+
+  if (!moved && tapTimer) {
+    if (endCount === 1 && count === 0) {
+      post("/mouse", { btn: "click" });
+      setStatus("left click");
+    }
+  }
+  for (const t of e.changedTouches) delete touches[t.identifier];
+  if (e.touches.length === 0) { moved = false; scrollAccum = 0; }
+}, { passive: false });
+
+pad.addEventListener("touchcancel", e => {
+  for (const t of e.changedTouches) delete touches[t.identifier];
+}, { passive: false });
+
+// two-finger tap = right click (separate listener on touchstart/end quick)
+let twoTapStart = 0;
+pad.addEventListener("touchstart", e => { if (e.touches.length === 2) twoTapStart = Date.now(); }, { passive: false });
+pad.addEventListener("touchend", e => {
+  if (e.touches.length === 0 && twoTapStart && Date.now() - twoTapStart < TAP_MS && !moved) {
+    post("/mouse", { btn: "rightclick" });
+    setStatus("right click");
+    twoTapStart = 0;
+  }
+}, { passive: false });
+
+// ── Keyboard ──
+const MODS = { shift: false, ctrl: false };
+
+document.querySelectorAll(".key[data-key]").forEach(el => {
+  const k = el.dataset.key;
+  const isMod = k === "shift" || k === "ctrl" || k === "alt";
+
+  el.addEventListener("pointerdown", ev => {
+    ev.preventDefault();
+    if (isMod) {
+      MODS[k] = !MODS[k];
+      document.querySelectorAll(`[data-key="${k}"]`).forEach(e => e.classList.toggle("held", MODS[k]));
+      post("/key", { key: k, action: MODS[k] ? "down" : "up" });
+      setStatus(`${k} ${MODS[k] ? "held" : "released"}`);
+    } else {
+      post("/key", { key: k, action: "tap" }).then(() => {
+        // release mods after non-mod key if held
+        if (MODS.shift) { MODS.shift = false; document.querySelectorAll('[data-key="shift"]').forEach(e => e.classList.remove("held")); post("/key", { key: "shift", action: "up" }); }
+        if (MODS.ctrl)  { MODS.ctrl  = false; document.querySelectorAll('[data-key="ctrl"]').forEach(e => e.classList.remove("held"));  post("/key", { key: "ctrl",  action: "up" }); }
+      });
+      setStatus(`key: ${k}`);
+      el.classList.add("held");
+      setTimeout(() => el.classList.remove("held"), 120);
+    }
+  });
+});
+</script>
+</body>
+</html>

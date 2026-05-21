@@ -11,7 +11,7 @@ fi
 if ! tmux has-session -t "$SESSION" 2>/dev/null; then
     echo "==> Starting new tmux session: $SESSION"
     tmux new-session -d -s "$SESSION" -x 220 -y 50
-    tmux send-keys -t "$SESSION" "cd ~/PI3 && claude" Enter
+    tmux send-keys -t "$SESSION" "cd ~/PI3 && claude --dangerously-skip-permissions" Enter
     echo "==> Session started. Attaching..."
 fi
 
