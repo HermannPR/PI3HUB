@@ -1,0 +1,14 @@
+[Unit]
+Description=Pi Phone Input Server
+After=graphical.target media-peepo-KINGSTON.mount
+Requires=media-peepo-KINGSTON.mount
+
+[Service]
+Type=simple
+ExecStartPre=/bin/sleep 8
+ExecStart=/bin/bash /media/peepo/KINGSTON/PI3/projects/phone-input/start.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target
