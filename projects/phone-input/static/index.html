@@ -46,7 +46,7 @@ body { background: var(--bg); color: #eee; font-family: system-ui, sans-serif; h
 .lk { color: #6f6; font-style: italic; opacity: .8; }
 .lo { color: var(--gold); font-weight: bold; }
 .lx { color: var(--g); }
-.ld { color: #0a2010; }
+.ld { color: #2a6a3a; }
 
 /* scroll + font btns overlay */
 #term-btns { position: absolute; right: 5px; display: flex; flex-direction: column; gap: 3px; z-index: 5; bottom: 5px; }
@@ -466,7 +466,8 @@ function lc(l) {
   // Ghost suggestions & status chrome → dim
   if (/^❯\s+(Try |how |what |run |refactor |create |add |fix |help |explain |show |list |make |write |check |update |delete |find )/i.test(l)) return "ld";
   if (/⏵⏵|bypass permissions|↑\s*\d+\s*token|·\s*\/effort|high\s*·|·\s*←|shift\+tab|for agents$/.test(l)) return "ld";
-  if (/^\s*─{3,}/.test(l)) return "ld";  // separator lines
+  if (/^\s*─{3,}/.test(l)) return "ld";
+  if (/✗|AutoUpdate|auto.update|update failed|failed to|error:/i.test(l)) return "ld";
   if (/^[❯>]\s/.test(l))                       return "lp";
   if (/^[●•]\s/.test(l))                        return "lt";
   if (/^[⎿↳✔]\s/.test(l))                      return "lr";
