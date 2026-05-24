@@ -333,29 +333,50 @@ def _delta(prev: list, curr: list):
     return curr, True  # no overlap → terminal cleared/reset
 
 def parse_state(raw):
-    lines  = [l for l in raw.splitlines() if l.strip()]
-    preview = lines[-200:]          # large window so _delta never misses a burst
-    screen  = lines[-20:]           # recent screen for mode/option detection
-    state  = {"mode": "idle", "preview": preview, "options": [], "yesno": False}
-    joined = "\n".join(screen)
-    bottom = "\n".join(screen[-8:])
+    lines   = [l for l in raw.splitlines() if l.strip()]
+    preview = lines[-200:]
+    screen  = lines[-20:]
+    state   = {"mode": "idle", "preview": preview, "options": [], "yesno": False}
+    joined  = "\n".join(screen)
+    bottom  = "\n".join(screen[-10:])   # wider window for interrupt text
+
+    # ── thinking detection ────────────────────────────────────────────────────
     thinking = bool(
-        re.search(r"esc to interrupt|ctrl.c to interrupt", bottom, re.I) or
+        re.search(r"esc to interrupt|ctrl.c to interrupt|press esc", joined, re.I) or
         re.search(r"[✻✢✦·⏺]\s+.*\d+\.?\d*s", bottom) or
         re.search(r"[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏][\s\xa0]", bottom) or
         re.search(r"\d+\.\d+s\s*$", bottom) or
-        re.search(r"Running|Executing|Writing|Reading|Searching|Compiling", bottom) and
-        re.search(r"\d+s", bottom)
+        (re.search(r"Running|Executing|Writing|Reading|Searching|Compiling", bottom) and
+         re.search(r"\d+s", bottom))
     )
+    # also thinking if content exists but no prompt visible (generating text)
+    last_line = screen[-1] if screen else ""
+    if not thinking and preview and not re.search(r"^\s*[❯>]\s", last_line):
+        # no prompt at bottom + has content = likely generating
+        thinking = True
+
     if thinking:
         state["mode"] = "thinking"
+
+    # ── resume session picker ────────────────────────────────────────────────
+    picker_hdr = re.search(r"Select a session|resume.*session|◆.*session", joined, re.I)
+    picker_items = [l for l in screen if re.match(r"\s*[│]?\s*[❯]\s*.+", l)]
+    if not picker_items:
+        picker_items = [l for l in screen if re.match(r"\s*[│]\s{2}.+", l)]
+    if picker_hdr and len(picker_items) >= 1 and not thinking:
+        state["mode"] = "picker"
+        state["options"] = [
+            {"num": str(i+1), "label": re.sub(r"^[\s│❯]+", "", l).strip()[:38]}
+            for i, l in enumerate(picker_items[:6])
+        ]
+        return state
+
+    # ── numbered options ─────────────────────────────────────────────────────
     opts = []; seen = set()
     for line in screen:
-        # Match: "1. text", "> 1. text", "  2) text", etc.
         m = re.match(r"^[\s❯>\-]*(\d{1,2})[.)]\s+(.{2,})", line)
         if m and m.group(1) not in seen:
-            seen.add(m.group(1))
-            opts.append({"num": m.group(1), "label": m.group(2).strip()[:40]})
+            seen.add(m.group(1)); opts.append({"num": m.group(1), "label": m.group(2).strip()[:40]})
     has_cursor = any("❯" in l or bool(re.match(r"^\s*>\s*\d", l)) for l in screen)
     opts.sort(key=lambda o: int(o["num"]) if o["num"].isdigit() else 99)
     if opts and (len(opts) >= 2 or has_cursor) and not thinking:
@@ -511,7 +532,8 @@ def ping():
 def claude_state():
     def gen():
         sent_lines = []
-        last_sig = None  # (mode, options_str) for change detection
+        last_sig = None
+        last_change_t = time.time()
         while True:
             state = parse_state(read_tmux())
             new_lines, reset = _delta(sent_lines, state["preview"])
@@ -520,16 +542,20 @@ def claude_state():
             changed = sig != last_sig or new_lines or reset
             if changed:
                 last_sig = sig
-                out = {
-                    "mode":      state["mode"],
-                    "options":   state["options"],
-                    "new_lines": new_lines,
-                    "reset":     reset,
-                }
+                last_change_t = time.time()
+                out = {"mode": state["mode"], "options": state["options"],
+                       "new_lines": new_lines, "reset": reset}
                 yield f"data: {json.dumps(out)}\n\n"
             else:
                 yield 'data: {"ping":1}\n\n'
-            time.sleep(0.2)
+            # activity-based adaptive sleep: fast while content changing, slow when idle
+            idle_secs = time.time() - last_change_t
+            if idle_secs < 3.0:
+                time.sleep(0.2)
+            elif state["mode"] in ("options", "yesno", "picker"):
+                time.sleep(0.5)
+            else:
+                time.sleep(1.5)
     return Response(stream_with_context(gen()), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
