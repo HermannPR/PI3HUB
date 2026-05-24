@@ -260,6 +260,28 @@ audio { display: none; }
 [data-theme="xbox"] .ob.yes { background:#e8f8e8; color:#107c10; border-color:#107c1040; }
 [data-theme="xbox"] .ob.no  { background:#f8e8e8; color:#c00020; border-color:#c0002040; }
 
+/* ── STARTUP OVERLAY ── */
+#startup {
+  position:fixed; inset:0; z-index:150; background:var(--bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:24px; padding:30px;
+  transition:opacity .25s;
+}
+#startup.hidden { opacity:0; pointer-events:none; }
+#startup-logo { font-family:'Courier New',monospace; font-size:28px; font-weight:700; letter-spacing:.3em; color:var(--g); text-shadow:0 0 20px var(--gd); }
+#startup-sub  { font-family:'Courier New',monospace; font-size:10px; letter-spacing:.25em; color:var(--gk); margin-top:-16px; }
+.sv-btn {
+  width:100%; max-width:280px; padding:18px 0; border-radius:6px;
+  font-family:'Courier New',monospace; font-size:14px; font-weight:700; letter-spacing:.15em;
+  text-align:center; cursor:pointer; touch-action:manipulation;
+  transition:background .15s, color .15s;
+}
+.sv-btn.new  { background:var(--bg2); border:1px solid var(--gd); color:var(--gd); }
+.sv-btn.new:active  { background:var(--gk); color:var(--g); }
+.sv-btn.res  { background:var(--gk); border:1px solid var(--g); color:var(--g); }
+.sv-btn.res:active  { background:var(--g); color:#000; }
+#startup-hint { font-family:'Courier New',monospace; font-size:9px; color:var(--text-dim); letter-spacing:.1em; }
+
 /* ── STATUS LEDS ── */
 #status-leds {
   position:fixed; right:4px; top:50%; transform:translateY(-50%);
@@ -500,6 +522,15 @@ audio { display: none; }
   </div>
 </div>
 
+<!-- STARTUP OVERLAY -->
+<div id="startup" class="hidden">
+  <div id="startup-logo">JARVIS</div>
+  <div id="startup-sub">PI3 — READY</div>
+  <div class="sv-btn res" onclick="startupResume()">⏮  RESUME SESSION</div>
+  <div class="sv-btn new" onclick="startupNew()">+  NEW CONVERSATION</div>
+  <div id="startup-hint">tap to begin</div>
+</div>
+
 <!-- SCREEN OVERLAY -->
 <div id="scr-wrap">
   <div id="scr-hdr">
@@ -664,7 +695,28 @@ function updateScrollBtns() {
 }
 $("term").addEventListener("scroll", updateScrollBtns, {passive:true});
 
-let lastMode="idle", thinkStart=0;
+let lastMode="idle", thinkStart=0, _startupShown=false, _startupDone=false;
+
+function _isStartupState() {
+  // Claude Code initial prompt: terminal has ghost suggestions, no real content
+  const ghosts = TR.filter(l => /^❯\s+(Try |how |what |run |refactor |create |add |fix |help |explain |show |list |make |write |check |update |delete |find )/i.test(l));
+  const real   = TR.filter(l => lc(l) !== 'ld' && !/^❯/.test(l));
+  return ghosts.length >= 1 && real.length < 6;
+}
+function showStartup() {
+  if (_startupDone) return;
+  _startupShown = true;
+  $('startup').classList.remove('hidden');
+}
+function hideStartup() {
+  _startupShown = false;
+  $('startup').classList.add('hidden');
+}
+function startupNew() { _startupDone=true; hideStartup(); }
+function startupResume() {
+  _startupDone=true; hideStartup();
+  send('/resume');
+}
 
 // 1-second tick to keep elapsed timer live in mode bar
 setInterval(()=>{
@@ -703,8 +755,11 @@ function renderState(s) {
     lastMode=s.mode;
   }
   updateLeds(s.mode);
+  // Startup overlay: show when idle at initial Claude Code prompt
+  if (!_startupDone && s.mode === 'idle' && _isStartupState()) showStartup();
+  else if (s.mode !== 'idle' && _startupShown) hideStartup();
   // /resume only when idle (Claude just started or waiting)
-  $("resume-btn").style.display = s.mode === 'idle' ? '' : 'none';
+  $("resume-btn").style.display = (s.mode === 'idle' && !_startupShown) ? '' : 'none';
   const ob=$("opts"); ob.innerHTML="";
   if (s.mode==="yesno") {
     ["Y","N"].forEach(k=>{
