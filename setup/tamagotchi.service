@@ -1,0 +1,15 @@
+[Unit]
+Description=Pi Tamagotchi Server
+After=network.target local-fs.target
+RequiresMountsFor=/media/peepo/KINGSTON
+
+[Service]
+Type=simple
+User=peepo
+WorkingDirectory=/media/peepo/KINGSTON/PI3/projects/tamagotchi
+ExecStart=/usr/bin/python3 server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

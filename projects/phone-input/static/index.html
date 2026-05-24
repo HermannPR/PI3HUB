@@ -79,6 +79,8 @@ body { background: var(--bg); color: var(--text); font-family: system-ui, sans-s
 .lo { color: var(--gold); font-weight: bold; border-left-color: rgba(255,200,0,.08); }
 .lx { color: var(--g); }
 .ld { color: #1e4a28; }
+.la { color: #00e060; border-left-color: rgba(0,224,96,.18); font-weight: bold; }
+.lm { color: var(--red); border-left-color: rgba(233,69,96,.18); }
 
 /* scroll + font btns overlay */
 #term-btns { position: absolute; right: 28px; display: flex; flex-direction: column; gap: 3px; z-index: 5; bottom: 5px; }
@@ -123,6 +125,7 @@ body { background: var(--bg); color: var(--text); font-family: system-ui, sans-s
 /* RST: hold to fire */
 .ab.rst { color: #553; border-color: #332; background: #0a0800; transition: color .15s, border-color .15s, background .15s; }
 .ab.rst.armed { color: #f44; border-color: #f443; background: #1a0101; }
+.ab.resume { color: #4af; border-color: #4af3; background: #001018; }
 
 /* TOOL BAR */
 #tbar { display: flex; background: #010301; border-top: 1px solid var(--border); flex-shrink: 0; padding-bottom: max(4px, env(safe-area-inset-bottom)); }
@@ -357,6 +360,7 @@ audio { display: none; }
   <div class="ab" onclick="send('continue')">▶ CONT</div>
   <div class="ab" onclick="send('yes')">✓ YES</div>
   <div class="ab" onclick="send('no')">✗ NO</div>
+  <div class="ab resume" id="resume-btn" onclick="send('/resume')" style="display:none">⏮ RESUME</div>
   <div class="ab rst" id="rst-btn"
     onpointerdown="rstArm()" onpointerup="rstCancel()" onpointerleave="rstCancel()">↺ RST</div>
 </div>
@@ -580,20 +584,29 @@ function closeDrw() {
 function lc(l) {
   const t = l.trim();
   if (!t) return "ld";
+  // Separator lines (_____ or -----) → dim
+  if (/^[_\-=]{4,}$/.test(t)) return "ld";
   // UI chrome / ghost suggestions → dim
   if (/^❯\s+(Try |how |what |run |refactor |create |add |fix |help |explain |show |list |make |write |check |update |delete |find )/i.test(l)) return "ld";
   if (/⏵⏵|bypass permissions|↑\s*\d+\s*token|·\s*\/effort|high\s*·|·\s*←|shift\+tab|for agents$/.test(l)) return "ld";
   if (/^\s*─{6,}/.test(l)) return "ld";
   if (/^Tip:|ℹ /i.test(t)) return "ld";
+  // Diff file headers (+++ / ---) → dim
+  if (/^(\+{3}|-{3}) /.test(t) || /^@@.+@@/.test(t)) return "ld";
+  // Diff added / removed lines
+  if (/^\+[^+]/.test(t)) return "la";
+  if (/^-[^ -]/.test(t)) return "lm";
   // Prompt line
   if (/^[❯>]\s/.test(l)) return "lp";
+  // Markdown headers
+  if (/^#{1,3} /.test(t)) return "lp";
   // Bullet / list items
   if (/^[●•·]\s/.test(l)) return "lt";
   // Tool results / confirmations
   if (/^[⎿↳✔✓]\s/.test(l)) return "lr";
-  // Thinking / tool call lines
+  // Thinking / tool call / timer lines
   if (/[✻✢✦⏺]\s|[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/.test(l)) return "lk";
-  if (/\b\d+\.\d+s\b/.test(l) && /Running|Writing|Reading|Executing|Searching|Bash|Edit|Read/.test(l)) return "lk";
+  if (/\b\d+\.?\d*s\b/.test(l) && /Running|Writing|Reading|Executing|Searching|Bash|Edit|Read|tokens|token/.test(l)) return "lk";
   // Numbered options
   if (/^\s*\d{1,2}[.)]\s+\S/.test(l)) return "lo";
   // Errors / warnings
@@ -609,6 +622,7 @@ function makeTL(text, cls, animate) {
   d.textContent = text || " ";
   return d;
 }
+const _timerRe = /\d+\.?\d*s/;
 function renderTR(newCount, isReset) {
   const t = $("term");
   if (isReset) {
@@ -620,10 +634,14 @@ function renderTR(newCount, isReset) {
   }
   if (!newCount) return;
   const f = document.createDocumentFragment();
-  for (let i = TR.length - newCount; i < TR.length; i++)
-    f.appendChild(makeTL(TR[i], lc(TR[i]), true));
+  for (let i = TR.length - newCount; i < TR.length; i++) {
+    const l = TR[i]; const cls = lc(l);
+    // Replace previous timer/spinner line instead of stacking
+    if (cls === 'lk' && _timerRe.test(l) && t.lastChild && t.lastChild.classList.contains('lk') && _timerRe.test(t.lastChild.textContent))
+      t.removeChild(t.lastChild);
+    f.appendChild(makeTL(l, cls, true));
+  }
   t.appendChild(f);
-  // Prune excess nodes from top to stay within ML
   while (t.children.length > ML) t.removeChild(t.firstChild);
 }
 
@@ -667,6 +685,8 @@ function renderState(s) {
     lastMode=s.mode;
   }
   updateLeds(s.mode);
+  // /resume only when idle (Claude just started or waiting)
+  $("resume-btn").style.display = s.mode === 'idle' ? '' : 'none';
   const ob=$("opts"); ob.innerHTML="";
   if (s.mode==="yesno") {
     ["Y","N"].forEach(k=>{
