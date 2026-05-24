@@ -24,6 +24,10 @@ python3 -c "import qrcode" 2>/dev/null || \
 IP=$(hostname -I | awk '{print $1}')
 URL="http://$IP:5000"
 
+# Get git commit count as peepo (git rejects repo owned by peepo when run as root)
+GIT_N=$(runuser -u peepo -- git -C "$(dirname "$0")" rev-list --count HEAD 2>/dev/null || echo 0)
+export PI_VERSION="1.${GIT_N}"
+
 echo ""
 echo "  ╔══════════════════════════════╗"
 echo "  ║        JARVIS  PI3           ║"

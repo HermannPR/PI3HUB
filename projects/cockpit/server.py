@@ -53,6 +53,8 @@ _cached_ip   = [None]
 _tamago_cache = {"data": None, "t": 0.0}
 _TAMAGO_TTL  = 30.0
 
+VERSION = os.environ.get("PI_VERSION", "1.0")
+
 def _get_ip():
     if _cached_ip[0]:
         return _cached_ip[0]
@@ -275,7 +277,7 @@ def _ensure_claude():
 
 # ── System info ───────────────────────────────────────────────────────────────
 def _sys_info():
-    out = {"ip": _get_ip()}
+    out = {"ip": _get_ip(), "version": VERSION}
     # CPU temp
     try:
         r = subprocess.run(["vcgencmd", "measure_temp"], capture_output=True, text=True, timeout=2)
