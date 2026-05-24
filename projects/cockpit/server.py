@@ -526,7 +526,7 @@ def claude_state():
                 }
                 yield f"data: {json.dumps(out)}\n\n"
             else:
-                yield ": ping\n\n"
+                yield 'data: {"ping":1}\n\n'
             time.sleep(0.2)
     return Response(stream_with_context(gen()), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
