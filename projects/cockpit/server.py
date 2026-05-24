@@ -424,6 +424,21 @@ def power_shutdown():
 def ping():
     return jsonify(ok=True)
 
+@app.route("/qr")
+def qr_code():
+    try:
+        import qrcode, io as _io
+        ip = socket.gethostbyname(socket.gethostname())
+        url = f"http://{ip}:5000"
+        qr = qrcode.QRCode(border=1)
+        qr.add_data(url)
+        qr.make(fit=True)
+        buf = _io.StringIO()
+        qr.print_ascii(invert=True, out=buf)
+        return Response(f"<pre style='font-size:11px;line-height:1.1;background:#000;color:#fff;padding:10px;display:inline-block'>{buf.getvalue()}</pre><p style='font-family:monospace;color:#0f0'>{url}</p>", mimetype="text/html")
+    except Exception as e:
+        return Response(str(e), mimetype="text/plain")
+
 # ·· Claude / phone-input routes ··
 @app.route("/claude-state")
 def claude_state():

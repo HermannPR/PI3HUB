@@ -72,6 +72,8 @@ body { background: var(--bg); color: #eee; font-family: system-ui, sans-serif; h
 .ob.num:active { background: #00e06018; }
 .ob.yes { background: #021004; color: #0f0; border: 1px solid #0f03; }
 .ob.no  { background: #100202; color: #f44; border: 1px solid #f443; }
+.ob.prs { flex: none; width: calc(50% - 2px); background: var(--bg); color: #005a28; border: 1px solid #00e06018; font-size: 9px; text-align: left; padding: 7px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
+.ob.prs:active, .ob.prs.sel { background: #00e06018; color: var(--g); border-color: var(--gd); font-weight: 700; }
 
 /* INPUT */
 #inp-row { display: flex; gap: 4px; padding: 5px 8px; flex-shrink: 0; background: var(--bg2); border-top: 1px solid var(--border); touch-action: auto; }
@@ -506,6 +508,28 @@ function updateScrollBtns() {
 }
 $("term").addEventListener("scroll", updateScrollBtns, {passive:true});
 
+const PRESETS = [
+  "claude --resume",
+  "claude --dangerously-skip-permissions --resume",
+  "claude",
+  "claude --dangerously-skip-permissions",
+  "/ultra",
+  "clear",
+];
+let presetIdx = -1;
+
+function renderPresets() {
+  const ob = $("opts");
+  ob.innerHTML = "";
+  PRESETS.forEach((cmd, i) => {
+    const b = document.createElement("div");
+    b.className = "ob prs" + (i === presetIdx ? " sel" : "");
+    b.textContent = cmd;
+    b.onclick = () => { presetIdx = -1; send(cmd); };
+    ob.appendChild(b);
+  });
+}
+
 let lastMode="idle";
 function renderState(s) {
   const t=$("term");
@@ -527,6 +551,7 @@ function renderState(s) {
     else if (s.mode==="idle"&&lastMode==="thinking") navigator.vibrate&&navigator.vibrate(100);
     lastMode=s.mode;
   }
+  if (s.mode !== "idle") presetIdx = -1;
   const ob=$("opts"); ob.innerHTML="";
   if (s.mode==="yesno") {
     ["Y","N"].forEach(k=>{
@@ -540,6 +565,8 @@ function renderState(s) {
       b.innerHTML=`<span style="font-size:17px;display:block;line-height:1.1">${o.num}</span><span style="font-size:9px;color:#005a28">${o.label.substring(0,22)}</span>`;
       b.onclick=()=>choose(o.num); ob.appendChild(b);
     });
+  } else if (s.mode==="idle") {
+    renderPresets();
   }
 }
 
@@ -562,9 +589,21 @@ let sseTimeout;
 // ── Actions ──
 function send(txt) {
   const inp=$("ci"); txt=txt||inp.value.trim(); if(!txt) return;
-  inp.value=""; post("/prompt",{text:txt});
+  inp.value=""; presetIdx=-1; post("/prompt",{text:txt});
 }
 function choose(c) { post("/choose",{choice:c}); }
+
+// Arrow up/down cycles presets when idle
+$("ci").addEventListener("keydown", e => {
+  if (lastMode !== "idle") return;
+  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+    e.preventDefault();
+    if (e.key === "ArrowUp") presetIdx = presetIdx <= 0 ? PRESETS.length-1 : presetIdx-1;
+    else presetIdx = presetIdx >= PRESETS.length-1 ? 0 : presetIdx+1;
+    $("ci").value = PRESETS[presetIdx];
+    renderPresets();
+  }
+});
 
 // RST: hold 600ms to fire
 let rstTimer=null;
