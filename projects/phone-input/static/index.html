@@ -10,9 +10,28 @@
   --bg: #020804; --bg2: #010602; --bg3: #0a1a0a;
   --g: #00e060; --gd: #00a040; --gk: #003010; --gx: #0a2010;
   --gold: #fd0; --red: #e94560; --blue: #4af; --border: #0a2010;
+  --text: #eee; --text-dim: #1a3a1a;
   --term-fs: 12px;
 }
-body { background: var(--bg); color: #eee; font-family: system-ui, sans-serif; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+[data-theme="claude"] {
+  --bg:#100a06;--bg2:#160c07;--bg3:#1e1008;
+  --g:#e07b54;--gd:#c45e38;--gk:#3a1a08;--gx:#2a1206;
+  --gold:#f0a060;--red:#e94560;--blue:#e09060;--border:#3a1a08;
+  --text:#f5e8d8;--text-dim:#6a3018;
+}
+[data-theme="gameboy"] {
+  --bg:#0f380f;--bg2:#0a2a0a;--bg3:#163a16;
+  --g:#9bbc0f;--gd:#8bac0f;--gk:#306230;--gx:#1a4a1a;
+  --gold:#c0d040;--red:#c05020;--blue:#70b070;--border:#306230;
+  --text:#9bbc0f;--text-dim:#306230;
+}
+[data-theme="xbox"] {
+  --bg:#f0f0f0;--bg2:#ffffff;--bg3:#e4e4e4;
+  --g:#107c10;--gd:#0a6010;--gk:#c8e4c8;--gx:#d8f0d8;
+  --gold:#c06000;--red:#c00020;--blue:#0060a0;--border:#c8c8c8;
+  --text:#1a1a1a;--text-dim:#888;
+}
+body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 
 /* HEADER */
 #hdr { display: flex; align-items: center; gap: 7px; padding: 7px 10px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; padding-top: max(7px, env(safe-area-inset-top)); }
@@ -38,18 +57,27 @@ body { background: var(--bg); color: #eee; font-family: system-ui, sans-serif; h
 
 /* TERMINAL */
 #term-wrap { flex: 1; position: relative; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-#term { flex: 1; overflow-y: auto; padding: 8px 10px; font-family: 'Courier New', monospace; font-size: var(--term-fs); line-height: 1.6; color: var(--g); white-space: pre-wrap; word-break: break-all; background: var(--bg); touch-action: pan-y; user-select: text; -webkit-overflow-scrolling: touch; }
-#term::after { content: ''; position: sticky; top: 0; left: 0; width: 100%; height: 100%; display: block; margin-top: -100%; background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.14) 3px,rgba(0,0,0,.14) 4px); pointer-events: none; }
-.lp { color: #fff; font-weight: bold; }
-.lt { color: var(--blue); }
-.lr { color: #28a; }
-.lk { color: #6f6; font-style: italic; opacity: .8; }
-.lo { color: var(--gold); font-weight: bold; }
+#term { flex: 1; overflow-y: auto; padding: 6px 10px; font-family: 'Courier New', monospace; font-size: var(--term-fs); line-height: 1.65; color: var(--g); white-space: pre-wrap; word-break: break-all; background: var(--bg); touch-action: pan-y; user-select: text; -webkit-overflow-scrolling: touch; }
+/* subtle scanlines */
+#term::after { content: ''; position: sticky; top: 0; left: 0; width: 100%; height: 100%; display: block; margin-top: -100%; background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.10) 3px,rgba(0,0,0,.10) 4px); pointer-events: none; }
+/* line blocks — each line is a div for nth-child and animation */
+.tl { display: block; border-left: 2px solid transparent; padding-left: 4px; white-space: pre-wrap; word-break: break-all; }
+/* subtle zebra texture: every other pair */
+.tl:nth-child(4n+3), .tl:nth-child(4n) { background: rgba(0,224,96,0.018); }
+/* new-line fade-in */
+@keyframes newLine { 0%{background:rgba(0,224,96,.13)} 100%{background:transparent} }
+.tl.ln { animation: newLine 2.2s ease-out forwards; }
+/* line type colors + left-border hints */
+.lp { color: #dde; font-weight: bold; border-left-color: rgba(255,255,255,.10); }
+.lt { color: var(--blue); border-left-color: rgba(68,170,255,.08); }
+.lr { color: #28a; border-left-color: rgba(34,136,170,.06); }
+.lk { color: #4ec; font-style: italic; opacity: .75; }
+.lo { color: var(--gold); font-weight: bold; border-left-color: rgba(255,200,0,.08); }
 .lx { color: var(--g); }
-.ld { color: #2a6a3a; }
+.ld { color: #1e4a28; }
 
 /* scroll + font btns overlay */
-#term-btns { position: absolute; right: 5px; display: flex; flex-direction: column; gap: 3px; z-index: 5; bottom: 5px; }
+#term-btns { position: absolute; right: 28px; display: flex; flex-direction: column; gap: 3px; z-index: 5; bottom: 5px; }
 .t-btn { width: 24px; height: 24px; border-radius: 3px; background: #00e06012; border: 1px solid #00e06035; color: var(--g); font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; touch-action: manipulation; opacity: 0; transition: opacity .2s; }
 .t-btn.show { opacity: 1; }
 #scroll-dn { font-size: 11px; }
@@ -169,6 +197,81 @@ body { background: var(--bg); color: #eee; font-family: system-ui, sans-serif; h
 
 audio { display: none; }
 
+/* ── THEME LABEL COLORS ── */
+[data-theme="claude"] #hdr-label,
+[data-theme="gameboy"] #hdr-label { color: var(--gd); }
+[data-theme="xbox"] #hdr-label { color: var(--gd); }
+
+/* ── CLAUDE HEADER ROBOT ── */
+#hdr-robot { display:none; font-family:'Courier New',monospace; font-size:11px; letter-spacing:0; margin-right:2px; }
+[data-theme="claude"] #hdr-robot { display:inline; color:var(--g); }
+
+/* ── CLAUDE ROBOT WATERMARK ── */
+#claude-robot {
+  display:none; position:absolute; bottom:10px; right:26px;
+  font-family:'Courier New',monospace; font-size:9px; line-height:1.5;
+  color:var(--g); opacity:.15; pointer-events:none; white-space:pre;
+  z-index:1; text-align:center; user-select:none;
+}
+#claude-robot.show { display:block; }
+
+/* ── TERMINAL LINE COLORS BY THEME ── */
+[data-theme="claude"] .lp { color:#f5e8d8; }
+[data-theme="claude"] .lt { color:#e09060; }
+[data-theme="claude"] .lr { color:#c45e38; }
+[data-theme="claude"] .lo { color:#f0a060; }
+[data-theme="claude"] .ld { color:#3a2018; }
+[data-theme="gameboy"] .lp { color:#c8d870; font-weight:bold; }
+[data-theme="gameboy"] .lt { color:#9bbc0f; }
+[data-theme="gameboy"] .lr { color:#8bac0f; }
+[data-theme="gameboy"] .lo { color:#c0d040; }
+[data-theme="gameboy"] .ld { color:#306230; }
+[data-theme="xbox"] #term { background:var(--bg2); }
+[data-theme="xbox"] .lp { color:#1a1a1a; font-weight:bold; }
+[data-theme="xbox"] .lt { color:var(--blue); }
+[data-theme="xbox"] .lr { color:var(--gd); }
+[data-theme="xbox"] .lk { color:var(--gold); }
+[data-theme="xbox"] .lo { color:var(--g); }
+[data-theme="xbox"] .lx { color:#333; }
+[data-theme="xbox"] .ld { color:#aaa; }
+
+/* ── XBOX LIGHT THEME OVERRIDES ── */
+[data-theme="xbox"] #ci { background:var(--bg3); color:var(--text); border-color:var(--border); caret-color:var(--g); }
+[data-theme="xbox"] #ci::placeholder,[data-theme="xbox"] #pi::placeholder { color:#aaa; }
+[data-theme="xbox"] #pi { background:var(--bg3); color:var(--text); caret-color:var(--g); }
+[data-theme="xbox"] #kbdpan { background:var(--bg2); }
+[data-theme="xbox"] .key { background:var(--bg3); color:var(--text); border-color:var(--border); }
+[data-theme="xbox"] .mb { background:var(--bg3); color:var(--text); }
+[data-theme="xbox"] #tp { background:var(--bg2); }
+[data-theme="xbox"] .drawer { background:var(--bg2); border-color:var(--border); }
+[data-theme="xbox"] .hbtn { color:var(--text-dim); border-color:var(--border); background:var(--bg3); }
+[data-theme="xbox"] .ab { color:var(--gd); background:var(--bg3); border-color:var(--border); }
+[data-theme="xbox"] .tb { color:var(--text-dim); }
+[data-theme="xbox"] .ab.rst { color:#888; border-color:var(--border); background:var(--bg3); }
+[data-theme="xbox"] .ab.rst.armed { color:var(--red); border-color:var(--red); background:#fff0f0; }
+[data-theme="xbox"] .ob.num { background:var(--bg3); color:var(--g); border-color:var(--border); }
+[data-theme="xbox"] .ob.yes { background:#e8f8e8; color:#107c10; border-color:#107c1040; }
+[data-theme="xbox"] .ob.no  { background:#f8e8e8; color:#c00020; border-color:#c0002040; }
+
+/* ── STATUS LEDS ── */
+#status-leds {
+  position:fixed; right:4px; top:50%; transform:translateY(-50%);
+  z-index:50; display:flex; flex-direction:column; gap:7px;
+  padding:8px 5px; background:var(--bg2); border:1px solid var(--border);
+  border-radius:12px; touch-action:none;
+}
+.led { width:10px; height:10px; border-radius:50%; background:var(--bg3); transition:background .3s,box-shadow .3s; }
+.led.r  { background:#e94560; box-shadow:0 0 8px #e9456099; }
+.led.y  { background:#fd0;    box-shadow:0 0 8px #fd09; animation:pulse .9s ease-in-out infinite; }
+.led.gn { background:#00e060; box-shadow:0 0 8px #00e06099; }
+[data-theme="claude"] .led.gn { background:var(--g); box-shadow:0 0 10px var(--g); }
+[data-theme="claude"] .led.y  { background:var(--gold); box-shadow:0 0 10px var(--gold); }
+[data-theme="gameboy"] .led.gn { background:var(--g); box-shadow:0 0 8px var(--g); }
+[data-theme="xbox"] .led { background:#ddd; }
+[data-theme="xbox"] .led.r  { background:#c00020; }
+[data-theme="xbox"] .led.y  { background:#c06000; }
+[data-theme="xbox"] .led.gn { background:#107c10; box-shadow:0 0 6px #107c1099; }
+
 /* GIT DRAWER */
 #git-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .gtab { flex: 1; padding: 7px; text-align: center; font-size: 10px; font-weight: 700; font-family: 'Courier New', monospace; color: #1a3a1a; cursor: pointer; touch-action: manipulation; }
@@ -203,8 +306,9 @@ audio { display: none; }
 <div id="hdr">
   <div id="hdr-info">
     <div id="hdr-dot"></div>
-    <span id="hdr-label">CONNECTING</span>
+    <span id="hdr-robot">⟨◉◉⟩ </span><span id="hdr-label">CONNECTING</span>
   </div>
+  <div class="hbtn" id="hbtn-theme" onclick="cycleTheme()" title="Theme">◈ MTX</div>
   <div class="hbtn" id="hbtn-scr" onclick="scrToggle()">📺 OFF</div>
   <div class="hbtn" id="hbtn-snd" onclick="sndToggle()">🔇</div>
 </div>
@@ -221,6 +325,7 @@ audio { display: none; }
 <!-- TERMINAL -->
 <div id="term-wrap">
   <div id="term"><span class="ld">Connecting to Claude…</span></div>
+  <div id="claude-robot" aria-hidden="true"></div>
   <div id="term-btns">
     <div class="t-btn" id="fs-up"  onclick="fsChange(1)">A+</div>
     <div class="t-btn" id="fs-dn"  onclick="fsChange(-1)">A-</div>
@@ -408,6 +513,12 @@ audio { display: none; }
 
 <audio id="snd"></audio>
 
+<div id="status-leds">
+  <div class="led" id="led-r"  title="error/dead"></div>
+  <div class="led" id="led-y"  title="working"></div>
+  <div class="led" id="led-g"  title="idle/done"></div>
+</div>
+
 <script>
 const $ = id => document.getElementById(id);
 function post(p, d) {
@@ -463,38 +574,39 @@ function closeDrw() {
 
 // ── Claude SSE ──
 function lc(l) {
-  // Ghost suggestions & status chrome → dim
+  const t = l.trim();
+  if (!t) return "ld";
+  // UI chrome / ghost suggestions → dim
   if (/^❯\s+(Try |how |what |run |refactor |create |add |fix |help |explain |show |list |make |write |check |update |delete |find )/i.test(l)) return "ld";
   if (/⏵⏵|bypass permissions|↑\s*\d+\s*token|·\s*\/effort|high\s*·|·\s*←|shift\+tab|for agents$/.test(l)) return "ld";
-  if (/^\s*─{3,}/.test(l)) return "ld";
-  if (/✗|AutoUpdate|auto.update|update failed|failed to|error:/i.test(l)) return "ld";
-  if (/^[❯>]\s/.test(l))                       return "lp";
-  if (/^[●•]\s/.test(l))                        return "lt";
-  if (/^[⎿↳✔]\s/.test(l))                      return "lr";
-  if (/[✻✢]\s.*\d+s|[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/.test(l))  return "lk";
-  if (/^\s*\d+[.)]\s/.test(l))                  return "lo";
-  if (!l.trim())                                 return "ld";
+  if (/^\s*─{6,}/.test(l)) return "ld";
+  if (/^Tip:|ℹ /i.test(t)) return "ld";
+  // Prompt line
+  if (/^[❯>]\s/.test(l)) return "lp";
+  // Bullet / list items
+  if (/^[●•·]\s/.test(l)) return "lt";
+  // Tool results / confirmations
+  if (/^[⎿↳✔✓]\s/.test(l)) return "lr";
+  // Thinking / tool call lines
+  if (/[✻✢✦⏺]\s|[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/.test(l)) return "lk";
+  if (/\b\d+\.\d+s\b/.test(l) && /Running|Writing|Reading|Executing|Searching|Bash|Edit|Read/.test(l)) return "lk";
+  // Numbered options
+  if (/^\s*\d{1,2}[.)]\s+\S/.test(l)) return "lo";
+  // Errors / warnings
+  if (/^\s*(Error|Warning|Failed|Cannot|Unable|✗)\b/i.test(l)) return "lr";
   return "lx";
 }
 
 const TR = []; const ML = 800;
-function appendL(inc) {
-  if (!inc.length) return false;
-  let ov=0;
-  for (let o=Math.min(TR.length,inc.length);o>0;o--) {
-    if (TR.slice(-o).every((l,i)=>l===inc[i])){ov=o;break;}
-  }
-  const nl = inc.slice(ov);
-  if (!nl.length) return false;
-  TR.push(...nl);
-  if (TR.length>ML) TR.splice(0,TR.length-ML);
-  return true;
-}
-function renderTR() {
-  $("term").innerHTML = TR.map(l=>{
-    const c=lc(l), e=l.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    return `<span class="${c}">${e}</span>`;
-  }).join("\n");
+
+function renderTR(newCount) {
+  const newStart = (newCount > 0) ? (TR.length - newCount) : -1;
+  $("term").innerHTML = TR.map((l, i) => {
+    const c   = lc(l);
+    const isN = i >= newStart && newStart >= 0;
+    const e   = l.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    return `<div class="tl ${c}${isN?' ln':''}">${e||' '}</div>`;
+  }).join("");
 }
 
 function updateScrollBtns() {
@@ -510,16 +622,24 @@ let lastMode="idle";
 function renderState(s) {
   const t=$("term");
   const atBot = t.scrollHeight-t.scrollTop-t.clientHeight < 60;
-  if (appendL(s.preview)) { renderTR(); if(atBot) t.scrollTop=9e9; }
+  if (s.reset) TR.length = 0;
+  const nl = s.new_lines || [];
+  if (nl.length) {
+    TR.push(...nl);
+    if (TR.length > ML) TR.splice(0, TR.length - ML);
+    renderTR(nl.length);
+    if (atBot) t.scrollTop = 9e9;
+  } else if (s.reset) {
+    renderTR(0);
+  }
   updateScrollBtns();
 
   const dot=$("hdr-dot"), lbl=$("hdr-label"), bar=$("mode-bar");
   const dc={idle:"",thinking:"thinking",options:"options",yesno:"options",dead:"dead"};
-  const mt={idle:"[ IDLE ]",thinking:"[ WORKING… ]",options:"[ CHOOSE ]",yesno:"[ Y / N ? ]",dead:"[ DEAD — HOLD RST ]"};
   const mc={idle:"mi",thinking:"mt",options:"mo",yesno:"my",dead:"md"};
   dot.className   = dc[s.mode]||"";
   lbl.textContent = s.mode.toUpperCase();
-  bar.textContent = mt[s.mode]||s.mode.toUpperCase();
+  bar.textContent = getModeText(s.mode);
   bar.className   = mc[s.mode]||"mi";
 
   if (s.mode!==lastMode) {
@@ -527,6 +647,7 @@ function renderState(s) {
     else if (s.mode==="idle"&&lastMode==="thinking") navigator.vibrate&&navigator.vibrate(100);
     lastMode=s.mode;
   }
+  updateLeds(s.mode);
   const ob=$("opts"); ob.innerHTML="";
   if (s.mode==="yesno") {
     ["Y","N"].forEach(k=>{
@@ -869,6 +990,63 @@ if (new URLSearchParams(location.search).get("cockpit")) {
     "padding:4px 8px","border-radius:4px","letter-spacing:.5px",
   ].join(";");
   document.body.appendChild(b);
+}
+
+// ── Themes ──
+const THEMES = [
+  {id:'',       label:'◈ MTX'},
+  {id:'claude', label:'⟨◉◉⟩'},
+  {id:'gameboy',label:'▣ DMG'},
+  {id:'xbox',   label:'◯ XBX'},
+];
+const ROBOT_ART =
+  '  .─────.\n' +
+  '  │◉   ◉│\n' +
+  '  │  ▽  │\n' +
+  "  '─────'\n" +
+  '   CLAUDE';
+let themeIdx = +(localStorage.getItem('pi-theme')||0);
+function applyTheme() {
+  const t = THEMES[themeIdx];
+  document.documentElement.dataset.theme = t.id;
+  $('hbtn-theme').textContent = t.label;
+  localStorage.setItem('pi-theme', themeIdx);
+}
+function cycleTheme() {
+  themeIdx = (themeIdx+1) % THEMES.length;
+  applyTheme();
+  navigator.vibrate && navigator.vibrate(20);
+}
+function getModeText(mode) {
+  const t = THEMES[themeIdx];
+  const base = {idle:'[ IDLE ]',thinking:'[ WORKING… ]',options:'[ CHOOSE ]',yesno:'[ Y / N ? ]',dead:'[ DEAD — HOLD RST ]'};
+  if (t.id === 'claude') return {
+    idle:'⟨◉_◉⟩  IDLE', thinking:'⟨ · · ⟩  WORKING…',
+    options:'⟨◉ ◉⟩  CHOOSE', yesno:'⟨◉ ◉⟩  Y / N ?',
+    dead:'⟨✕ ✕⟩  DEAD — HOLD RST'
+  }[mode] || base[mode];
+  if (t.id === 'gameboy') return {
+    idle:'▶  READY', thinking:'▶  PROCESSING…',
+    options:'▶  SELECT', yesno:'  A=YES    B=NO',
+    dead:'▶  GAME OVER'
+  }[mode] || base[mode];
+  if (t.id === 'xbox') return {
+    idle:'●  IDLE', thinking:'●  WORKING…',
+    options:'●  SELECT', yesno:'  A=YES    B=NO',
+    dead:'●  OFFLINE'
+  }[mode] || base[mode];
+  return base[mode] || mode.toUpperCase();
+}
+applyTheme();
+
+// ── LEDs + Claude robot ──
+function updateLeds(mode) {
+  $('led-r').className = 'led' + (mode==='dead'     ? ' r'  : '');
+  $('led-y').className = 'led' + (mode==='thinking' ? ' y'  : '');
+  $('led-g').className = 'led' + (['idle','options','yesno'].includes(mode) ? ' gn' : '');
+  const robot = $('claude-robot');
+  if (mode === 'idle') { robot.textContent = ROBOT_ART; robot.classList.add('show'); }
+  else robot.classList.remove('show');
 }
 
 // ── visualViewport ──
