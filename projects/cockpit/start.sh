@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pi Cockpit — unified control server launcher
+# JarvisPi3 — unified control server launcher
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -49,5 +49,7 @@ echo "  Modes:  CLAUDE DEV  GAMING  DESKTOP  HEADLESS"
 echo "  Boot:   http://localhost:5000/boot"
 echo "  Ctrl+C to stop"
 echo ""
+
+export TAMAGO_URL="${TAMAGO_URL:-https://your-tamagotchi.vercel.app}"
 
 exec python3 "$DIR/server.py"
