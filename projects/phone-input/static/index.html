@@ -64,9 +64,13 @@ body { background: var(--bg); color: var(--text); font-family: system-ui, sans-s
 .tl { display: block; border-left: 2px solid transparent; padding-left: 4px; white-space: pre-wrap; word-break: break-all; touch-action: pan-y; }
 /* subtle zebra texture: every other pair */
 .tl:nth-child(4n+3), .tl:nth-child(4n) { background: rgba(0,224,96,0.018); }
-/* new-line fade-in */
-@keyframes newLine { 0%{background:rgba(0,224,96,.13)} 100%{background:transparent} }
+/* new-line slide-in */
+@keyframes newLine { 0%{background:rgba(0,224,96,.15);transform:translateX(-4px);opacity:.7} 18%{transform:translateX(0);opacity:1} 100%{background:transparent} }
 .tl.ln { animation: newLine 2.2s ease-out forwards; }
+/* spinner/tool lines: continuous scan glow */
+@keyframes lkScan { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+.lk { background: linear-gradient(90deg,transparent 0%,rgba(78,200,200,.09) 50%,transparent 100%) no-repeat; background-size:200% 100%; animation: lkScan 3s linear infinite; }
+.lk.ln { animation: lkScan 3s linear infinite, newLine 2.2s ease-out forwards; }
 /* line type colors + left-border hints */
 .lp { color: #dde; font-weight: bold; border-left-color: rgba(255,255,255,.10); }
 .lt { color: var(--blue); border-left-color: rgba(68,170,255,.08); }
@@ -682,11 +686,11 @@ function renderState(s) {
 let sseTimeout;
 (function sse() {
   const es=new EventSource("/claude-state");
-  sseTimeout=setTimeout(()=>$("hdr-label").textContent="TIMEOUT",9000);
+  sseTimeout=setTimeout(()=>$("hdr-label").textContent="TIMEOUT",12000);
   es.onmessage=e=>{
     clearTimeout(sseTimeout);
-    sseTimeout=setTimeout(()=>$("hdr-label").textContent="STALE",8000);
-    try{renderState(JSON.parse(e.data));}catch(_){}
+    sseTimeout=setTimeout(()=>$("hdr-label").textContent="STALE",15000);
+    try{const d=JSON.parse(e.data); if(!d.ping) renderState(d);}catch(_){}
   };
   es.onerror=()=>{
     clearTimeout(sseTimeout);
@@ -725,10 +729,12 @@ function pasteClipboard() {
 }
 
 // ── Font size ──
-let fsSz=12;
+let fsSz=+(localStorage.getItem('pi-fs')||12);
+document.documentElement.style.setProperty("--term-fs", fsSz+"px");
 function fsChange(d) {
   fsSz=Math.max(9,Math.min(18,fsSz+d));
   document.documentElement.style.setProperty("--term-fs", fsSz+"px");
+  localStorage.setItem('pi-fs', fsSz);
 }
 
 // ── Volume popup ──
@@ -1032,21 +1038,33 @@ function cycleTheme() {
   applyTheme();
   navigator.vibrate && navigator.vibrate(20);
 }
+function getActiveTask() {
+  const spinRe = /^[\s⠋-⠙●•✖✨⏺➜]+/;
+  for (let i = TR.length-1; i >= Math.max(0, TR.length-6); i--) {
+    if (lc(TR[i]) === 'lk') {
+      const s = TR[i].replace(spinRe,'').trim();
+      if (s.length > 2) return s.substring(0, 28);
+    }
+  }
+  return null;
+}
 function getModeText(mode) {
   const t = THEMES[themeIdx];
-  const base = {idle:'[ IDLE ]',thinking:'[ WORKING… ]',options:'[ CHOOSE ]',yesno:'[ Y / N ? ]',dead:'[ DEAD — HOLD RST ]'};
+  const task = mode === 'thinking' ? getActiveTask() : null;
+  const working = task ? '● ' + task : '[ WORKING… ]';
+  const base = {idle:'[ IDLE ]',thinking:working,options:'[ CHOOSE ]',yesno:'[ Y / N ? ]',dead:'[ DEAD — HOLD RST ]'};
   if (t.id === 'claude') return {
-    idle:'⟨◉_◉⟩  IDLE', thinking:'⟨ · · ⟩  WORKING…',
+    idle:'⟨◉_◉⟩  IDLE', thinking: task ? '⟨ · ⟩ '+task : '⟨ · · ⟩  WORKING…',
     options:'⟨◉ ◉⟩  CHOOSE', yesno:'⟨◉ ◉⟩  Y / N ?',
     dead:'⟨✕ ✕⟩  DEAD — HOLD RST'
   }[mode] || base[mode];
   if (t.id === 'gameboy') return {
-    idle:'▶  READY', thinking:'▶  PROCESSING…',
+    idle:'▶  READY', thinking: task ? '▶ '+task : '▶  PROCESSING…',
     options:'▶  SELECT', yesno:'  A=YES    B=NO',
     dead:'▶  GAME OVER'
   }[mode] || base[mode];
   if (t.id === 'xbox') return {
-    idle:'●  IDLE', thinking:'●  WORKING…',
+    idle:'●  IDLE', thinking: task ? '● '+task : '●  WORKING…',
     options:'●  SELECT', yesno:'  A=YES    B=NO',
     dead:'●  OFFLINE'
   }[mode] || base[mode];
