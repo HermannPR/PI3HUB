@@ -353,7 +353,13 @@ def _delta(prev: list, curr: list):
         tail = prev_n[-overlap:]
         for i in range(len(curr_n) - overlap, -1, -1):
             if curr_n[i:i + overlap] == tail:
-                return list(curr[i + overlap:]), False
+                new_after = list(curr[i + overlap:])
+                # If the last matched line changed (timer tick), send it so the
+                # client can update the spinner in-place (renderTR replaces lk lines).
+                last_matched = curr[i + overlap - 1]
+                if last_matched != prev[-1] and _TIMER_NORM.search(last_matched):
+                    return [last_matched] + new_after, False
+                return new_after, False
     return curr, True  # no overlap → terminal cleared/reset
 
 _last_thinking_t = 0.0
@@ -617,9 +623,9 @@ def claude_state():
                 yield f"data: {json.dumps(out)}\n\n"
             else:
                 yield 'data: {"ping":1}\n\n'
-            # activity-based adaptive sleep: fast while content changing, slow when idle
+            # Poll fast while thinking or content recently changed; slow when idle
             idle_secs = time.time() - last_change_t
-            if idle_secs < 3.0:
+            if state["mode"] == "thinking" or idle_secs < 3.0:
                 time.sleep(0.2)
             elif state["mode"] in ("options", "yesno", "picker"):
                 time.sleep(0.5)

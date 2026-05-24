@@ -37,6 +37,7 @@ body { background: var(--bg); color: var(--text); font-family: system-ui, sans-s
 #hdr { display: flex; align-items: center; gap: 7px; padding: 7px 10px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; padding-top: max(7px, env(safe-area-inset-top)); }
 #hdr-info { flex: 1; display: flex; align-items: center; gap: 7px; min-width: 0; overflow: hidden; }
 #hdr-dot { width: 8px; height: 8px; border-radius: 50%; background: #1a3a1a; flex-shrink: 0; transition: background .3s; }
+#hdr-dot.idle     { background: #0d2a10; box-shadow: 0 0 4px #00e06030; }
 #hdr-dot.thinking { background: var(--g); animation: pulse .9s ease-in-out infinite; }
 #hdr-dot.options  { background: var(--gold); animation: pulse .5s ease-in-out infinite; }
 #hdr-dot.dead     { background: #f44; }
@@ -289,25 +290,6 @@ audio { display: none; }
 .sv-btn.res  { background:var(--gk); border:1px solid var(--g); color:var(--g); }
 .sv-btn.res:active  { background:var(--g); color:#000; }
 #startup-hint { font-family:'Courier New',monospace; font-size:9px; color:var(--text-dim); letter-spacing:.1em; }
-
-/* ── STATUS LEDS ── */
-#status-leds {
-  position:fixed; right:4px; top:50%; transform:translateY(-50%);
-  z-index:50; display:flex; flex-direction:column; gap:7px;
-  padding:8px 5px; background:var(--bg2); border:1px solid var(--border);
-  border-radius:12px; touch-action:none;
-}
-.led { width:10px; height:10px; border-radius:50%; background:var(--bg3); transition:background .3s,box-shadow .3s; }
-.led.r  { background:#e94560; box-shadow:0 0 8px #e9456099; }
-.led.y  { background:#fd0;    box-shadow:0 0 8px #fd09; animation:pulse .9s ease-in-out infinite; }
-.led.gn { background:#00e060; box-shadow:0 0 8px #00e06099; }
-[data-theme="claude"] .led.gn { background:var(--g); box-shadow:0 0 10px var(--g); }
-[data-theme="claude"] .led.y  { background:var(--gold); box-shadow:0 0 10px var(--gold); }
-[data-theme="gameboy"] .led.gn { background:var(--g); box-shadow:0 0 8px var(--g); }
-[data-theme="xbox"] .led { background:#ddd; }
-[data-theme="xbox"] .led.r  { background:#c00020; }
-[data-theme="xbox"] .led.y  { background:#c06000; }
-[data-theme="xbox"] .led.gn { background:#107c10; box-shadow:0 0 6px #107c1099; }
 
 /* GIT DRAWER */
 #git-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
@@ -572,12 +554,6 @@ audio { display: none; }
 
 <audio id="snd"></audio>
 
-<div id="status-leds">
-  <div class="led" id="led-r"  title="error/dead"></div>
-  <div class="led" id="led-y"  title="working"></div>
-  <div class="led" id="led-g"  title="idle/done"></div>
-</div>
-
 <script>
 const $ = id => document.getElementById(id);
 function post(p, d) {
@@ -797,9 +773,9 @@ function renderState(s) {
   updateScrollBtns();
 
   const dot=$("hdr-dot"), lbl=$("hdr-label"), bar=$("mode-bar");
-  const dc={idle:"",thinking:"thinking",options:"options",yesno:"options",picker:"options",dead:"dead"};
+  const dc={idle:"idle",thinking:"thinking",options:"options",yesno:"options",picker:"options",dead:"dead"};
   const mc={idle:"mi",thinking:"mt",options:"mo",yesno:"my",picker:"mo",dead:"md"};
-  dot.className   = dc[s.mode]||"";
+  dot.className   = dc[s.mode]||"idle";
   lbl.textContent = s.mode==='picker'?'RESUME':s.mode.toUpperCase();
   bar.textContent = getModeText(s.mode);
   bar.className   = mc[s.mode]||"mi";
@@ -811,7 +787,10 @@ function renderState(s) {
     else if (s.mode==="idle"&&lastMode==="thinking") { navigator.vibrate&&navigator.vibrate(100); logSave(); }
     lastMode=s.mode;
   }
-  updateLeds(s.mode);
+  // Show robot watermark when idle
+  { const robot=$('claude-robot');
+    if (s.mode==='idle') { robot.textContent=ROBOT_ART; robot.classList.add('show'); }
+    else robot.classList.remove('show'); }
   // Startup overlay: show when idle at initial Claude Code prompt
   if (!_startupDone && s.mode === 'idle' && _isStartupState()) showStartup();
   else if (s.mode !== 'idle' && _startupShown) hideStartup();
@@ -1254,16 +1233,6 @@ function getModeText(mode) {
 }
 applyTheme();
 logBadge();
-
-// ── LEDs + Claude robot ──
-function updateLeds(mode) {
-  $('led-r').className = 'led' + (mode==='dead'                              ? ' r'  : '');
-  $('led-y').className = 'led' + (mode==='thinking'                          ? ' y'  : '');
-  $('led-g').className = 'led' + (['idle','options','yesno','picker'].includes(mode) ? ' gn' : '');
-  const robot = $('claude-robot');
-  if (mode === 'idle') { robot.textContent = ROBOT_ART; robot.classList.add('show'); }
-  else robot.classList.remove('show');
-}
 
 // ── visualViewport ──
 if(window.visualViewport){
