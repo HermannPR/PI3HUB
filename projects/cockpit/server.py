@@ -23,7 +23,7 @@ TMUX_SOCK    = "/tmp/tmux-1000/default"
 TMUX_SESSION = "setup"
 TMUX_WINDOW  = "claude"
 ANSI_RE      = re.compile(r"\x1b\[[0-9;]*[mKHFABCDJG]|\x1b\(B|\x1b=|\x1b>|\r")
-JUNK_RE      = re.compile(r”[^\x20-\x7e─-▟⠀-⣿’”
+JUNK_RE      = re.compile(r"[^\x20-\x7e─-▟⠀-⣿"
                            r"✓✔✗✘●▪◻◼"
                            r"❯➡✨☀-⛿⭐"
                            r"°·×→←↑↓"
