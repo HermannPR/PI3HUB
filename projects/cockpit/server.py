@@ -322,8 +322,7 @@ def _delta(prev: list, curr: list):
     """Return (new_lines, reset). Compares prev/curr to find only new content."""
     if not prev:
         return curr, True
-    # Find longest suffix of prev that appears in curr (max 30 lines to check)
-    max_overlap = min(len(prev), len(curr), 30)
+    max_overlap = min(len(prev), len(curr), 80)
     for overlap in range(max_overlap, 0, -1):
         tail = prev[-overlap:]
         for i in range(len(curr) - overlap, -1, -1):
@@ -333,11 +332,11 @@ def _delta(prev: list, curr: list):
 
 def parse_state(raw):
     lines  = [l for l in raw.splitlines() if l.strip()]
-    tail   = lines[-30:] if len(lines) > 30 else lines
-    screen = tail[-20:]
-    state  = {"mode": "idle", "preview": tail[-80:], "options": [], "yesno": False}
+    preview = lines[-200:]          # large window so _delta never misses a burst
+    screen  = lines[-20:]           # recent screen for mode/option detection
+    state  = {"mode": "idle", "preview": preview, "options": [], "yesno": False}
     joined = "\n".join(screen)
-    bottom = "\n".join(screen[-10:])
+    bottom = "\n".join(screen[-8:])
     thinking = bool(
         re.search(r"esc to interrupt|ctrl.c to interrupt", bottom, re.I) or
         re.search(r"[✻✢✦·⏺]\s+.*\d+\.?\d*s", bottom) or
@@ -528,7 +527,7 @@ def claude_state():
                 yield f"data: {json.dumps(out)}\n\n"
             else:
                 yield ": ping\n\n"
-            time.sleep(0.6)
+            time.sleep(0.2)
     return Response(stream_with_context(gen()), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
