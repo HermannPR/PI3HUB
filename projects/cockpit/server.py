@@ -517,11 +517,18 @@ def api_tamago():
         return jsonify(**_tamago_cache["data"])
     try:
         req = urllib.request.Request(
-            f"{TAMAGO_URL}/leaderboard",
+            f"{TAMAGO_URL}/api/leaderboard",
             headers={"Accept": "application/json"}
         )
         with urllib.request.urlopen(req, timeout=4) as r:
-            scores = json.loads(r.read().decode())
+            raw = json.loads(r.read().decode())
+        # Normalize: mildred-pierce returns {users:[{alias,clicks}], pet, piOnline}
+        # Legacy flask tamagotchi returns [{nick, score}]
+        if isinstance(raw, dict) and "users" in raw:
+            scores = [{"nick": u.get("alias","?"), "score": u.get("clicks", 0)}
+                      for u in raw.get("users", [])]
+        else:
+            scores = raw
         data = {"online": True, "scores": scores}
     except Exception:
         data = {"online": False, "scores": []}

@@ -135,7 +135,18 @@ except Exception as e:
     check("IMPORT", "qrcode matrix", False, str(e)[:30])
 
 # ── TAMAGOTCHI ────────────────────────────────────────────────────────────────
+# TAMAGO_URL is set inside the server process (start.sh), not the test shell.
+# Read it via the /api/tamago endpoint instead.
 tamago_url = os.environ.get("TAMAGO_URL", "")
+if not tamago_url:
+    # Try to infer from start.sh
+    try:
+        sh = open(os.path.join(os.path.dirname(__file__), "start.sh")).read()
+        import re as _re
+        m = _re.search(r'TAMAGO_URL:-([^}]+)\}', sh)
+        if m: tamago_url = m.group(1).strip('"\'')
+    except Exception:
+        pass
 placeholder = "your-tamagotchi.vercel.app" in tamago_url or tamago_url == ""
 check("TAMA", "TAMAGO_URL set", not placeholder,
       tamago_url[:40] if tamago_url else "not set")
@@ -143,24 +154,16 @@ check("TAMA", "TAMAGO_URL set", not placeholder,
 if tamago_url and not placeholder:
     try:
         req = urllib.request.Request(
-            tamago_url.rstrip("/") + "/health",
+            tamago_url.rstrip("/") + "/api/leaderboard",
             headers={"Accept": "application/json"})
         with urllib.request.urlopen(req, timeout=5) as r:
             d = json.loads(r.read())
-            check("TAMA", "vercel /health", d.get("ok"), tamago_url.split("/")[2])
+            # mildred-pierce returns {users:[...]} or legacy [{nick,score}]
+            entries = d.get("users", d) if isinstance(d, dict) else d
+            check("TAMA", "vercel leaderboard", isinstance(entries, list),
+                  f"{len(entries)} entries")
     except Exception as e:
-        check("TAMA", "vercel /health", False, str(e)[:35])
-
-    try:
-        req = urllib.request.Request(
-            tamago_url.rstrip("/") + "/leaderboard",
-            headers={"Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=5) as r:
-            scores = json.loads(r.read())
-            check("TAMA", "leaderboard", isinstance(scores, list),
-                  f"{len(scores)} entries")
-    except Exception as e:
-        check("TAMA", "leaderboard", False, str(e)[:35])
+        check("TAMA", "vercel leaderboard", False, str(e)[:35])
 
 # ── PRINT ─────────────────────────────────────────────────────────────────────
 print()

@@ -50,6 +50,6 @@ echo "  Boot:   http://localhost:5000/boot"
 echo "  Ctrl+C to stop"
 echo ""
 
-export TAMAGO_URL="${TAMAGO_URL:-https://your-tamagotchi.vercel.app}"
+export TAMAGO_URL="${TAMAGO_URL:-https://mildred-pierce.vercel.app}"
 
 exec python3 "$DIR/server.py"
