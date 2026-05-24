@@ -353,10 +353,7 @@ def _delta(prev: list, curr: list):
         tail = prev_n[-overlap:]
         for i in range(len(curr_n) - overlap, -1, -1):
             if curr_n[i:i + overlap] == tail:
-                # Send any lines that changed within the matched window (timer updates)
-                changed = [curr[i+j] for j in range(overlap)
-                           if prev[len(prev)-overlap+j] != curr[i+j]]
-                return changed + list(curr[i + overlap:]), False
+                return list(curr[i + overlap:]), False
     return curr, True  # no overlap → terminal cleared/reset
 
 _last_thinking_t = 0.0
