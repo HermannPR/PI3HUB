@@ -226,7 +226,7 @@ def _do_switch(mode):
         if peg:
             xa = _find_xauth() or "/home/peepo/.Xauthority"
             subprocess.Popen(
-                ["sudo", "-u", "peepo", "bash", "-c",
+                ["runuser", "-u", "peepo", "--", "bash", "-c",
                  f"DISPLAY=:0 XAUTHORITY={xa} {peg}"],
                 start_new_session=True,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
@@ -241,16 +241,16 @@ def _do_switch(mode):
 def _ensure_claude():
     try:
         r = subprocess.run(
-            ["sudo", "-u", "peepo", "tmux", "-S", TMUX_SOCK,
+            ["runuser", "-u", "peepo", "--", "tmux", "-S", TMUX_SOCK,
              "has-session", "-t", TMUX_SESSION],
             capture_output=True
         )
         if r.returncode != 0:
-            subprocess.run(["sudo", "-u", "peepo", "tmux", "-S", TMUX_SOCK,
+            subprocess.run(["runuser", "-u", "peepo", "--", "tmux", "-S", TMUX_SOCK,
                             "new-session", "-d", "-s", TMUX_SESSION, "-x", "60", "-y", "30"])
-            subprocess.run(["sudo", "-u", "peepo", "tmux", "-S", TMUX_SOCK,
+            subprocess.run(["runuser", "-u", "peepo", "--", "tmux", "-S", TMUX_SOCK,
                             "new-window", "-t", TMUX_SESSION, "-n", TMUX_WINDOW])
-            subprocess.run(["sudo", "-u", "peepo", "tmux", "-S", TMUX_SOCK,
+            subprocess.run(["runuser", "-u", "peepo", "--", "tmux", "-S", TMUX_SOCK,
                             "send-keys", "-t", f"{TMUX_SESSION}:{TMUX_WINDOW}", "claude", "Enter"])
         threading.Thread(target=_watch_trust, daemon=True).start()
     except Exception as e:
@@ -304,7 +304,7 @@ def _sys_info():
 # ── tmux helpers ──────────────────────────────────────────────────────────────
 def tmux(*args):
     return subprocess.run(
-        ["sudo", "-u", "peepo", "tmux", "-S", TMUX_SOCK] + list(args),
+        ["runuser", "-u", "peepo", "--", "tmux", "-S", TMUX_SOCK] + list(args),
         capture_output=True, text=True
     )
 
@@ -659,7 +659,7 @@ def audio_stream():
     def gen():
         pw_cmd = ("XDG_RUNTIME_DIR=/run/user/1000 PIPEWIRE_RUNTIME_DIR=/run/user/1000 "
                   f"pw-record --target '{_DEFAULT_SINK}' --rate 44100 --channels 2 -")
-        pw = subprocess.Popen(["sudo", "-u", "peepo", "bash", "-c", pw_cmd],
+        pw = subprocess.Popen(["runuser", "-u", "peepo", "--", "bash", "-c", pw_cmd],
                               stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
         ff = subprocess.Popen(
             ["ffmpeg", "-loglevel", "quiet", "-f", "s16le", "-ar", "44100", "-ac", "2",
@@ -695,7 +695,7 @@ def audio_stream():
 @app.route("/audio-volume", methods=["POST"])
 def audio_volume():
     vol = max(0, min(100, int((request.get_json(force=True) or {}).get("vol", 80))))
-    subprocess.run(["sudo", "-u", "peepo", "wpctl", "set-volume",
+    subprocess.run(["runuser", "-u", "peepo", "--", "wpctl", "set-volume",
                     "@DEFAULT_AUDIO_SINK@", f"{vol}%"], env=_PW_ENV, timeout=3)
     return jsonify(ok=True, vol=vol)
 

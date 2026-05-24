@@ -26,7 +26,7 @@ URL="http://$IP:5000"
 
 echo ""
 echo "  ╔══════════════════════════════╗"
-echo "  ║        PI  COCKPIT           ║"
+echo "  ║        PI  NEXUS             ║"
 echo "  ╠══════════════════════════════╣"
 printf "  ║  Phone: %-22s║\n" "$URL"
 echo "  ╚══════════════════════════════╝"
@@ -45,9 +45,9 @@ except Exception:
     pass
 PYEOF
 
-echo "  Modes:  CLAUDE DEV · GAMING · DESKTOP · HEADLESS"
-echo "  Power:  hold REBOOT / SHUTDOWN buttons (0.9s)"
+echo "  Modes:  CLAUDE DEV  GAMING  DESKTOP  HEADLESS"
+echo "  Boot:   http://localhost:5000/boot"
 echo "  Ctrl+C to stop"
 echo ""
 
-exec sudo python3 "$DIR/server.py"
+exec python3 "$DIR/server.py"
