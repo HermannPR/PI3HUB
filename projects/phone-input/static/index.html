@@ -628,17 +628,27 @@ function renderTR(newCount, isReset) {
   if (isReset) {
     t.innerHTML = "";
     const f = document.createDocumentFragment();
-    for (const l of TR) f.appendChild(makeTL(l, lc(l), false));
+    let prev = '';
+    for (const l of TR) {
+      let cls = lc(l);
+      if (cls === 'lx' && prev === 'lp' && /^\s+\S/.test(l)) cls = 'lp';
+      prev = cls;
+      f.appendChild(makeTL(l, cls, false));
+    }
     t.appendChild(f);
     return;
   }
   if (!newCount) return;
   const f = document.createDocumentFragment();
+  let prev = t.lastChild ? (t.lastChild.className.match(/\bl\w\b/)||['lx'])[0] : '';
   for (let i = TR.length - newCount; i < TR.length; i++) {
-    const l = TR[i]; const cls = lc(l);
+    const l = TR[i]; let cls = lc(l);
+    // Prompt continuation: plain lines after lp → also lp
+    if (cls === 'lx' && prev === 'lp' && /^\s+\S/.test(l)) cls = 'lp';
     // Replace previous timer/spinner line instead of stacking
     if (cls === 'lk' && _timerRe.test(l) && t.lastChild && t.lastChild.classList.contains('lk') && _timerRe.test(t.lastChild.textContent))
       t.removeChild(t.lastChild);
+    prev = cls;
     f.appendChild(makeTL(l, cls, true));
   }
   t.appendChild(f);
@@ -654,7 +664,13 @@ function updateScrollBtns() {
 }
 $("term").addEventListener("scroll", updateScrollBtns, {passive:true});
 
-let lastMode="idle";
+let lastMode="idle", thinkStart=0;
+
+// 1-second tick to keep elapsed timer live in mode bar
+setInterval(()=>{
+  if(lastMode==='thinking'&&thinkStart) $("mode-bar").textContent=getModeText('thinking');
+}, 1000);
+
 function renderState(s) {
   const t=$("term");
   const atBot = t.scrollHeight-t.scrollTop-t.clientHeight < 60;
@@ -672,15 +688,17 @@ function renderState(s) {
   updateScrollBtns();
 
   const dot=$("hdr-dot"), lbl=$("hdr-label"), bar=$("mode-bar");
-  const dc={idle:"",thinking:"thinking",options:"options",yesno:"options",dead:"dead"};
-  const mc={idle:"mi",thinking:"mt",options:"mo",yesno:"my",dead:"md"};
+  const dc={idle:"",thinking:"thinking",options:"options",yesno:"options",picker:"options",dead:"dead"};
+  const mc={idle:"mi",thinking:"mt",options:"mo",yesno:"my",picker:"mo",dead:"md"};
   dot.className   = dc[s.mode]||"";
-  lbl.textContent = s.mode.toUpperCase();
+  lbl.textContent = s.mode==='picker'?'RESUME':s.mode.toUpperCase();
   bar.textContent = getModeText(s.mode);
   bar.className   = mc[s.mode]||"mi";
 
   if (s.mode!==lastMode) {
-    if (s.mode==="options"||s.mode==="yesno") navigator.vibrate&&navigator.vibrate([80,40,80]);
+    if (s.mode==='thinking' && lastMode!=='thinking') thinkStart=Date.now();
+    else if (s.mode!=='thinking') thinkStart=0;
+    if (s.mode==="options"||s.mode==="yesno"||s.mode==="picker") navigator.vibrate&&navigator.vibrate([80,40,80]);
     else if (s.mode==="idle"&&lastMode==="thinking") navigator.vibrate&&navigator.vibrate(100);
     lastMode=s.mode;
   }
@@ -724,7 +742,20 @@ function send(txt) {
   const inp=$("ci"); txt=txt||inp.value.trim(); if(!txt) return;
   inp.value=""; post("/prompt",{text:txt});
 }
-function choose(c) { post("/choose",{choice:c}); }
+function choose(c) {
+  if (lastMode === 'picker') {
+    // Navigate session picker with arrow keys + enter
+    const n = parseInt(c);
+    if (!isNaN(n) && n >= 1) {
+      const steps = [];
+      for (let i = 1; i < n; i++) steps.push(()=>post("/key",{key:"down",action:"tap"}));
+      steps.reduce((p,f)=>p.then(f), Promise.resolve())
+           .then(()=>post("/key",{key:"enter",action:"tap"}));
+      return;
+    }
+  }
+  post("/choose",{choice:c});
+}
 
 // RST: hold 600ms to fire
 let rstTimer=null;
@@ -1063,29 +1094,34 @@ function getActiveTask() {
   for (let i = TR.length-1; i >= Math.max(0, TR.length-6); i--) {
     if (lc(TR[i]) === 'lk') {
       const s = TR[i].replace(spinRe,'').trim();
-      if (s.length > 2) return s.substring(0, 28);
+      if (s.length > 2) return s.substring(0, 26);
     }
   }
   return null;
 }
+function getElapsed() {
+  return thinkStart ? Math.round((Date.now()-thinkStart)/1000) : 0;
+}
 function getModeText(mode) {
   const t = THEMES[themeIdx];
   const task = mode === 'thinking' ? getActiveTask() : null;
-  const working = task ? '● ' + task : '[ WORKING… ]';
-  const base = {idle:'[ IDLE ]',thinking:working,options:'[ CHOOSE ]',yesno:'[ Y / N ? ]',dead:'[ DEAD — HOLD RST ]'};
+  const secs = getElapsed();
+  const timeStr = secs >= 2 ? ` ${secs}s` : '';
+  const working = task ? `● ${task}${timeStr}` : `[ WORKING…${timeStr} ]`;
+  const base = {idle:'[ IDLE ]',thinking:working,options:'[ CHOOSE ]',yesno:'[ Y / N ? ]',picker:'[ SELECT SESSION ]',dead:'[ DEAD — HOLD RST ]'};
   if (t.id === 'claude') return {
-    idle:'⟨◉_◉⟩  IDLE', thinking: task ? '⟨ · ⟩ '+task : '⟨ · · ⟩  WORKING…',
-    options:'⟨◉ ◉⟩  CHOOSE', yesno:'⟨◉ ◉⟩  Y / N ?',
+    idle:'⟨◉_◉⟩  IDLE', thinking: task ? `⟨ · ⟩ ${task}${timeStr}` : `⟨ · · ⟩  WORKING…${timeStr}`,
+    options:'⟨◉ ◉⟩  CHOOSE', yesno:'⟨◉ ◉⟩  Y / N ?', picker:'⟨◉ ◉⟩  SELECT SESSION',
     dead:'⟨✕ ✕⟩  DEAD — HOLD RST'
   }[mode] || base[mode];
   if (t.id === 'gameboy') return {
-    idle:'▶  READY', thinking: task ? '▶ '+task : '▶  PROCESSING…',
-    options:'▶  SELECT', yesno:'  A=YES    B=NO',
+    idle:'▶  READY', thinking: task ? `▶ ${task}${timeStr}` : `▶  PROCESSING…${timeStr}`,
+    options:'▶  SELECT', yesno:'  A=YES    B=NO', picker:'▶  SELECT SESSION',
     dead:'▶  GAME OVER'
   }[mode] || base[mode];
   if (t.id === 'xbox') return {
-    idle:'●  IDLE', thinking: task ? '● '+task : '●  WORKING…',
-    options:'●  SELECT', yesno:'  A=YES    B=NO',
+    idle:'●  IDLE', thinking: task ? `● ${task}${timeStr}` : `●  WORKING…${timeStr}`,
+    options:'●  SELECT', yesno:'  A=YES    B=NO', picker:'●  SELECT SESSION',
     dead:'●  OFFLINE'
   }[mode] || base[mode];
   return base[mode] || mode.toUpperCase();
@@ -1094,9 +1130,9 @@ applyTheme();
 
 // ── LEDs + Claude robot ──
 function updateLeds(mode) {
-  $('led-r').className = 'led' + (mode==='dead'     ? ' r'  : '');
-  $('led-y').className = 'led' + (mode==='thinking' ? ' y'  : '');
-  $('led-g').className = 'led' + (['idle','options','yesno'].includes(mode) ? ' gn' : '');
+  $('led-r').className = 'led' + (mode==='dead'                              ? ' r'  : '');
+  $('led-y').className = 'led' + (mode==='thinking'                          ? ' y'  : '');
+  $('led-g').className = 'led' + (['idle','options','yesno','picker'].includes(mode) ? ' gn' : '');
   const robot = $('claude-robot');
   if (mode === 'idle') { robot.textContent = ROBOT_ART; robot.classList.add('show'); }
   else robot.classList.remove('show');
