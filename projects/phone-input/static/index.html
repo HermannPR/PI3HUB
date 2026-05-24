@@ -61,7 +61,7 @@ body { background: var(--bg); color: var(--text); font-family: system-ui, sans-s
 /* subtle scanlines */
 #term::after { content: ''; position: sticky; top: 0; left: 0; width: 100%; height: 100%; display: block; margin-top: -100%; background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.10) 3px,rgba(0,0,0,.10) 4px); pointer-events: none; }
 /* line blocks — each line is a div for nth-child and animation */
-.tl { display: block; border-left: 2px solid transparent; padding-left: 4px; white-space: pre-wrap; word-break: break-all; }
+.tl { display: block; border-left: 2px solid transparent; padding-left: 4px; white-space: pre-wrap; word-break: break-all; touch-action: pan-y; }
 /* subtle zebra texture: every other pair */
 .tl:nth-child(4n+3), .tl:nth-child(4n) { background: rgba(0,224,96,0.018); }
 /* new-line fade-in */
@@ -329,7 +329,7 @@ audio { display: none; }
   <div id="term-btns">
     <div class="t-btn" id="fs-up"  onclick="fsChange(1)">A+</div>
     <div class="t-btn" id="fs-dn"  onclick="fsChange(-1)">A-</div>
-    <div class="t-btn show" id="scroll-up" onclick="$('term').scrollTop=0">▲</div>
+    <div class="t-btn" id="scroll-up" onclick="$('term').scrollTop=0">▲</div>
     <div class="t-btn" id="scroll-dn" onclick="$('term').scrollTop=9e9">▼</div>
   </div>
 </div>
@@ -599,14 +599,28 @@ function lc(l) {
 
 const TR = []; const ML = 800;
 
-function renderTR(newCount) {
-  const newStart = (newCount > 0) ? (TR.length - newCount) : -1;
-  $("term").innerHTML = TR.map((l, i) => {
-    const c   = lc(l);
-    const isN = i >= newStart && newStart >= 0;
-    const e   = l.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    return `<div class="tl ${c}${isN?' ln':''}">${e||' '}</div>`;
-  }).join("");
+function makeTL(text, cls, animate) {
+  const d = document.createElement("div");
+  d.className = "tl " + cls + (animate ? " ln" : "");
+  d.textContent = text || " ";
+  return d;
+}
+function renderTR(newCount, isReset) {
+  const t = $("term");
+  if (isReset) {
+    t.innerHTML = "";
+    const f = document.createDocumentFragment();
+    for (const l of TR) f.appendChild(makeTL(l, lc(l), false));
+    t.appendChild(f);
+    return;
+  }
+  if (!newCount) return;
+  const f = document.createDocumentFragment();
+  for (let i = TR.length - newCount; i < TR.length; i++)
+    f.appendChild(makeTL(TR[i], lc(TR[i]), true));
+  t.appendChild(f);
+  // Prune excess nodes from top to stay within ML
+  while (t.children.length > ML) t.removeChild(t.firstChild);
 }
 
 function updateScrollBtns() {
@@ -622,15 +636,16 @@ let lastMode="idle";
 function renderState(s) {
   const t=$("term");
   const atBot = t.scrollHeight-t.scrollTop-t.clientHeight < 60;
-  if (s.reset) TR.length = 0;
+  const isReset = !!s.reset;
+  if (isReset) TR.length = 0;
   const nl = s.new_lines || [];
   if (nl.length) {
     TR.push(...nl);
     if (TR.length > ML) TR.splice(0, TR.length - ML);
-    renderTR(nl.length);
-    if (atBot) t.scrollTop = 9e9;
-  } else if (s.reset) {
-    renderTR(0);
+  }
+  if (nl.length || isReset) {
+    renderTR(nl.length, isReset);
+    if (atBot || isReset) t.scrollTop = 9e9;
   }
   updateScrollBtns();
 
