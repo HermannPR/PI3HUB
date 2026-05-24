@@ -131,6 +131,12 @@ body { background: var(--bg); color: var(--text); font-family: system-ui, sans-s
 #tbar { display: flex; background: #010301; border-top: 1px solid var(--border); flex-shrink: 0; padding-bottom: max(4px, env(safe-area-inset-bottom)); }
 .tb { flex: 1; padding: 9px 0; text-align: center; font-size: 9px; font-weight: 700; letter-spacing: .3px; color: #1a3a1a; cursor: pointer; touch-action: manipulation; font-family: 'Courier New', monospace; }
 .tb.open { color: var(--gd); border-top: 2px solid var(--gd); padding-top: 7px; }
+/* LOG drawer */
+#log-actions { display:flex; align-items:center; gap:6px; padding:5px 8px; border-bottom:1px solid var(--border); flex-shrink:0; background:var(--bg2); }
+#log-count { flex:1; font-family:'Courier New',monospace; font-size:9px; color:var(--gd); letter-spacing:.5px; }
+.log-act { padding:4px 10px; font-family:'Courier New',monospace; font-size:9px; font-weight:700; color:var(--gd); border:1px solid var(--border); border-radius:3px; cursor:pointer; touch-action:manipulation; background:var(--bg); }
+.log-act:active { background:var(--gk); }
+#log-view { flex:1; overflow-y:auto; min-height:0; padding:6px 10px; font-family:'Courier New',monospace; font-size:11px; line-height:1.55; color:var(--g); white-space:pre-wrap; word-break:break-all; background:var(--bg); touch-action:pan-y; user-select:text; -webkit-overflow-scrolling:touch; }
 
 /* DRAWER */
 #bd { position: fixed; inset: 0; z-index: 99; background: rgba(0,0,0,.55); display: none; }
@@ -394,6 +400,7 @@ audio { display: none; }
   <div class="tb" id="tbtn-prompt" onclick="drw('prompt')">PROMPT</div>
   <div class="tb" id="tbtn-yt"     onclick="drw('yt')">YT</div>
   <div class="tb" id="tbtn-git"    onclick="drw('git')">GIT</div>
+  <div class="tb" id="tbtn-log"    onclick="drw('log')">LOG</div>
 </div>
 
 <div id="bd" onclick="closeDrw()"></div>
@@ -522,6 +529,17 @@ audio { display: none; }
   </div>
 </div>
 
+<!-- LOG DRAWER -->
+<div class="drawer" id="d-log">
+  <div class="dh">▼ LOG — swipe down to close</div>
+  <div id="log-actions">
+    <span id="log-count">0 lines</span>
+    <div class="log-act" onclick="logCopy()">COPY</div>
+    <div class="log-act" onclick="logClear()">CLEAR</div>
+  </div>
+  <div id="log-view"></div>
+</div>
+
 <!-- STARTUP OVERLAY -->
 <div id="startup" class="hidden">
   <div id="startup-logo">JARVIS</div>
@@ -588,6 +606,7 @@ function drw(name) {
   if (name==="prompt") setTimeout(()=>$("pi").focus(),150);
   if (name==="yt")     setTimeout(()=>$("ytu").focus(),150);
   if (name==="git")    gitOnOpen();
+  if (name==="log")    logRefresh();
 }
 function closeDrw() {
   if (curDrw) { $("d-"+curDrw).classList.remove("open"); curDrw=null; }
@@ -646,6 +665,39 @@ function lc(l) {
 }
 
 const TR = []; const ML = 800;
+
+// ── Chat log (persisted, larger buffer) ──
+const MAX_LOG = 8000, LOG_TRIM = 2000;
+let LOG = [];
+try { LOG = JSON.parse(localStorage.getItem('pi-log')||'[]'); } catch(_){}
+function logAppend(lines) {
+  if (!lines.length) return;
+  LOG.push(...lines);
+  if (LOG.length > MAX_LOG) LOG.splice(0, LOG_TRIM);
+}
+function logSave() {
+  try { localStorage.setItem('pi-log', JSON.stringify(LOG.slice(-MAX_LOG))); } catch(_){}
+}
+function logRefresh() {
+  const lv = $('log-view'), lc2 = $('log-count');
+  if (!lv) return;
+  lv.textContent = LOG.join('\n');
+  lv.scrollTop = 9e9;
+  lc2.textContent = LOG.length + ' lines';
+}
+function logCopy() {
+  navigator.clipboard && navigator.clipboard.writeText(LOG.join('\n')).catch(()=>{});
+}
+function logClear() {
+  LOG.length = 0;
+  try { localStorage.removeItem('pi-log'); } catch(_) {}
+  logRefresh();
+}
+// Update log count badge even when drawer is closed
+function logBadge() {
+  const btn = $('tbtn-log');
+  if (btn) btn.textContent = LOG.length > 0 ? 'LOG·'+Math.round(LOG.length/100)*100 : 'LOG';
+}
 
 function makeTL(text, cls, animate) {
   const d = document.createElement("div");
@@ -734,8 +786,11 @@ function renderState(s) {
     if (TR.length > ML) TR.splice(0, TR.length - ML);
   }
   if (nl.length || isReset) {
+    logAppend(nl);
     renderTR(nl.length, isReset);
     if (atBot || isReset) t.scrollTop = 9e9;
+    if (curDrw === 'log') logRefresh();
+    logBadge();
   }
   updateScrollBtns();
 
@@ -751,7 +806,7 @@ function renderState(s) {
     if (s.mode==='thinking' && lastMode!=='thinking') thinkStart=Date.now();
     else if (s.mode!=='thinking') thinkStart=0;
     if (s.mode==="options"||s.mode==="yesno"||s.mode==="picker") navigator.vibrate&&navigator.vibrate([80,40,80]);
-    else if (s.mode==="idle"&&lastMode==="thinking") navigator.vibrate&&navigator.vibrate(100);
+    else if (s.mode==="idle"&&lastMode==="thinking") { navigator.vibrate&&navigator.vibrate(100); logSave(); }
     lastMode=s.mode;
   }
   updateLeds(s.mode);
@@ -1182,6 +1237,7 @@ function getModeText(mode) {
   return base[mode] || mode.toUpperCase();
 }
 applyTheme();
+logBadge();
 
 // ── LEDs + Claude robot ──
 function updateLeds(mode) {
