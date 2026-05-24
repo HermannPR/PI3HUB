@@ -1,0 +1,16 @@
+[Unit]
+Description=Pi Claude tmux session
+After=multi-user.target
+
+[Service]
+Type=forking
+User=peepo
+ExecStart=/usr/bin/tmux new-session -d -s setup -x 220 -y 50
+ExecStartPost=/usr/bin/tmux new-window -t setup -n tamagotchi
+ExecStartPost=/usr/bin/tmux send-keys -t setup:tamagotchi "cd /media/peepo/KINGSTON/PI3/projects/tamagotchi && python3 server.py" Enter
+ExecStartPost=/usr/bin/tmux new-window -t setup -n claude
+ExecStartPost=/usr/bin/tmux send-keys -t setup:claude "cd /home/peepo/PI3 && claude --dangerously-skip-permissions" Enter
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -308,14 +308,16 @@ def tmux(*args):
         capture_output=True, text=True
     )
 
+_SEP_RE = re.compile(r'^[\s_\-=]{4,}$')
+
 def read_tmux():
     try:
         r   = tmux("capture-pane", "-t", f"{TMUX_SESSION}:{TMUX_WINDOW}", "-p", "-S", "-300")
         raw = ANSI_RE.sub("", r.stdout)
-        return "\n".join(
-            JUNK_RE.sub("", l).strip()
-            for l in raw.splitlines() if len(JUNK_RE.sub("", l).strip()) > 1
-        )
+        def keep(l):
+            s = JUNK_RE.sub("", l).strip()
+            return len(s) > 1 and not _SEP_RE.match(s)
+        return "\n".join(JUNK_RE.sub("", l).strip() for l in raw.splitlines() if keep(l))
     except Exception: return ""
 
 def _delta(prev: list, curr: list):

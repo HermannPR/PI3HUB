@@ -1,5 +1,5 @@
 [Unit]
-Description=Pi NEXUS — unified phone control server
+Description=JARVIS PI3 — unified phone control server
 After=multi-user.target network.target
 
 [Service]
