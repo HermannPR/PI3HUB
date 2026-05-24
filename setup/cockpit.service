@@ -1,16 +1,16 @@
 [Unit]
-Description=Pi Cockpit — unified phone control server
-After=graphical.target media-peepo-KINGSTON.mount
-Requires=media-peepo-KINGSTON.mount
+Description=Pi NEXUS — unified phone control server
+After=multi-user.target network.target
 
 [Service]
 Type=simple
-ExecStartPre=/bin/sleep 8
-ExecStart=/bin/bash /media/peepo/KINGSTON/PI3/projects/cockpit/start.sh
+User=root
+ExecStartPre=/bin/sleep 5
+ExecStart=/bin/bash /home/peepo/PI3/projects/cockpit/start.sh
 Restart=on-failure
-RestartSec=5
+RestartSec=10
 StandardOutput=journal
 StandardError=journal
 
 [Install]
-WantedBy=graphical.target
+WantedBy=multi-user.target
