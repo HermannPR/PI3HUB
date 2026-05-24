@@ -61,8 +61,8 @@ def main():
     # Static elements
     logo_y = qr_y0 - fn_sub.metrics("linespace") - 10
     sub_y  = qr_y0 - 6
-    cv.create_text(cx, logo_y, text="J A R V I S  P I 3",
-                   fill=BRIGHT, font=fn_logo, anchor="s")
+    logo_id = cv.create_text(cx, logo_y, text="J A R V I S  P I 3",
+                             fill=BRIGHT, font=fn_logo, anchor="s")
     cv.create_text(cx, sub_y, text="RASPBERRY PI CONTROL INTERFACE",
                    fill=DIM, font=fn_sub, anchor="s")
 
@@ -185,7 +185,9 @@ def main():
         # IP + version
         cv.itemconfig(ip_id, text=f"http://{d.get('ip','--')}:5000")
         if d.get("version"):
-            cv.itemconfig(ver_id, text=f"v{d['version']}")
+            v = d["version"]
+            cv.itemconfig(ver_id,  text=f"v{v}")
+            cv.itemconfig(logo_id, text=f"J A R V I S  P I 3  ·  v{v}")
 
         # Footer stats
         temp = d.get("temp")
