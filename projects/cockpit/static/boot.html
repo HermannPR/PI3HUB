@@ -175,6 +175,25 @@ body::after {
 }
 .slbl { color: #0a1820; margin-right: 4px; }
 
+/* tamagotchi widget */
+#tamago {
+  margin-top: 12px;
+  width: clamp(180px, 44vw, 320px);
+  font-size: clamp(8px, 1vw, 10px);
+  letter-spacing: 0.14em;
+  animation: fadeIn 3.5s ease both;
+}
+#tama-hdr {
+  color: var(--dim);
+  margin-bottom: 5px;
+}
+#tama-dot  { transition: color 0.6s; }
+#tama-txt  { transition: color 0.6s; }
+.tama-row {
+  display: flex; justify-content: space-between;
+  color: var(--dim); padding: 1px 0; letter-spacing: 0.1em;
+}
+
 /* flash on connect */
 #flash {
   position: fixed; inset: 0;
@@ -213,6 +232,10 @@ body::after {
   <div id="ip">--</div>
   <div id="status">AWAITING CONNECTION<span id="cur">_</span></div>
   <div id="term-embed"></div>
+  <div id="tamago">
+    <div id="tama-hdr">TAMA <span id="tama-dot">●</span> <span id="tama-txt">--</span></div>
+    <div id="tama-board"></div>
+  </div>
 </div>
 
 <div id="stats">
@@ -296,8 +319,36 @@ setTimeout(function() {
   };
 })();
 
+async function pollTamago() {
+  try {
+    var r = await fetch('/api/tamago');
+    if (!r.ok) return;
+    var d = await r.json();
+    var dot   = document.getElementById('tama-dot');
+    var txt   = document.getElementById('tama-txt');
+    var board = document.getElementById('tama-board');
+    if (d.online) {
+      dot.style.color = 'var(--accent)';
+      txt.style.color = 'var(--accent)';
+      txt.textContent = 'ONLINE';
+      var scores = (d.scores || []).slice(0, 5);
+      board.innerHTML = scores.map(function(s) {
+        return '<div class="tama-row"><span>#' + s.rank + '  ' + s.nick + '</span>' +
+               '<span>' + s.score.toLocaleString() + '</span></div>';
+      }).join('');
+    } else {
+      dot.style.color = 'var(--dim)';
+      txt.style.color = 'var(--dim)';
+      txt.textContent = 'OFFLINE';
+      board.innerHTML = '';
+    }
+  } catch(e) {}
+}
+
 poll();
 setInterval(poll, 2000);
+pollTamago();
+setInterval(pollTamago, 30000);
 </script>
 </body>
 </html>

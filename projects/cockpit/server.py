@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Pi Nexus — unified control server (port 5000).
-Merges phone-input + pegasus-pad + nexus routes.
+JarvisPi3 — unified control server (port 5000).
+Merges phone-input + pegasus-pad + jarvis routes.
 Run: sudo python3 server.py   (or via start.sh / cockpit.service)
 """
 from flask import Flask, jsonify, request, send_from_directory, Response, stream_with_context
 from flask_sock import Sock
-import os, sys, re, json, subprocess, time, threading, io, glob, socket, shutil
+import os, sys, re, json, subprocess, time, threading, io, glob, socket, shutil, urllib.request
 
 if os.geteuid() != 0:
     sys.exit("Run with sudo: sudo python3 server.py")
@@ -47,6 +47,23 @@ JUNK_RE      = re.compile(
     "\u25b6\u23f5"
     "]"
 )
+
+TAMAGO_URL   = os.environ.get("TAMAGO_URL", "http://localhost:5001")
+_cached_ip   = [None]
+_tamago_cache = {"data": None, "t": 0.0}
+_TAMAGO_TTL  = 30.0
+
+def _get_ip():
+    if _cached_ip[0]:
+        return _cached_ip[0]
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        _cached_ip[0] = s.getsockname()[0]
+        s.close()
+    except Exception:
+        _cached_ip[0] = "?"
+    return _cached_ip[0]
 
 MODES = {
     "claude-dev": {"label": "CLAUDE DEV", "color": "#00e060", "ui": "/claude"},
@@ -258,12 +275,7 @@ def _ensure_claude():
 
 # ── System info ───────────────────────────────────────────────────────────────
 def _sys_info():
-    out = {}
-    # IP
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80)); out["ip"] = s.getsockname()[0]; s.close()
-    except Exception: out["ip"] = "?"
+    out = {"ip": _get_ip()}
     # CPU temp
     try:
         r = subprocess.run(["vcgencmd", "measure_temp"], capture_output=True, text=True, timeout=2)
@@ -308,7 +320,8 @@ def tmux(*args):
         capture_output=True, text=True
     )
 
-_SEP_RE = re.compile(r'^[\s_\-=]{4,}$')
+_SEP_RE      = re.compile(r'^[\s_\-=]{4,}$')
+_TIMER_NORM  = re.compile(r'\b\d+\.?\d*s\b')
 
 def read_tmux():
     try:
@@ -321,24 +334,59 @@ def read_tmux():
     except Exception: return ""
 
 def _delta(prev: list, curr: list):
-    """Return (new_lines, reset). Compares prev/curr to find only new content."""
+    """Return (new_lines, reset). Handles timer-value changes without full resets."""
     if not prev:
         return curr, True
     max_overlap = min(len(prev), len(curr), 80)
+    # Exact match first
     for overlap in range(max_overlap, 0, -1):
         tail = prev[-overlap:]
         for i in range(len(curr) - overlap, -1, -1):
             if curr[i:i + overlap] == tail:
                 return curr[i + overlap:], False
+    # Fuzzy match: normalize timer values (e.g. "12.3s" → "Xs") so a ticking
+    # timer line doesn't cause a full reset on every poll.
+    def _n(l): return _TIMER_NORM.sub('Xs', l)
+    prev_n = [_n(l) for l in prev]
+    curr_n = [_n(l) for l in curr]
+    for overlap in range(max_overlap, 0, -1):
+        tail = prev_n[-overlap:]
+        for i in range(len(curr_n) - overlap, -1, -1):
+            if curr_n[i:i + overlap] == tail:
+                # Send any lines that changed within the matched window (timer updates)
+                changed = [curr[i+j] for j in range(overlap)
+                           if prev[len(prev)-overlap+j] != curr[i+j]]
+                return changed + list(curr[i + overlap:]), False
     return curr, True  # no overlap → terminal cleared/reset
 
+_last_thinking_t = 0.0
+THINK_HOLD = 2.0  # keep thinking mode for 2s after last detection
+
 def parse_state(raw):
+    global _last_thinking_t
     lines   = [l for l in raw.splitlines() if l.strip()]
     preview = lines[-200:]
     screen  = lines[-20:]
     state   = {"mode": "idle", "preview": preview, "options": [], "yesno": False}
     joined  = "\n".join(screen)
-    bottom  = "\n".join(screen[-10:])   # wider window for interrupt text
+    bottom  = "\n".join(screen[-10:])
+
+    # ── pre-detect interactive UI (needed to guard the "no prompt" heuristic) ─
+    opts = []; seen = set()
+    for line in screen:
+        m = re.match(r"^[\s❯>\-]*(\d{1,2})[.)]\s+(.{2,})", line)
+        if m and m.group(1) not in seen:
+            seen.add(m.group(1)); opts.append({"num": m.group(1), "label": m.group(2).strip()[:40]})
+    has_cursor  = any("❯" in l or bool(re.match(r"^\s*>\s*\d", l)) for l in screen)
+    picker_hdr  = re.search(r"Select a session|resume.*session|◆.*session", joined, re.I)
+    picker_items = [l for l in screen if re.match(r"\s*[│]?\s*[❯]\s*.+", l)]
+    if not picker_items:
+        picker_items = [l for l in screen if re.match(r"\s*[│]\s{2}.+", l)]
+    is_interactive = (
+        (opts and (len(opts) >= 2 or has_cursor)) or
+        bool(re.search(r"\[y[/ ]?n\]|\[yes[/ ]?no\]|\(y[/ ]?n\)", joined, re.I)) or
+        bool(picker_hdr and picker_items)
+    )
 
     # ── thinking detection ────────────────────────────────────────────────────
     thinking = bool(
@@ -349,20 +397,12 @@ def parse_state(raw):
         (re.search(r"Running|Executing|Writing|Reading|Searching|Compiling", bottom) and
          re.search(r"\d+s", bottom))
     )
-    # also thinking if content exists but no prompt visible (generating text)
-    last_line = screen[-1] if screen else ""
-    if not thinking and preview and not re.search(r"^\s*[❯>]\s", last_line):
-        # no prompt at bottom + has content = likely generating
-        thinking = True
-
+    now = time.time()
     if thinking:
+        _last_thinking_t = now
         state["mode"] = "thinking"
 
     # ── resume session picker ────────────────────────────────────────────────
-    picker_hdr = re.search(r"Select a session|resume.*session|◆.*session", joined, re.I)
-    picker_items = [l for l in screen if re.match(r"\s*[│]?\s*[❯]\s*.+", l)]
-    if not picker_items:
-        picker_items = [l for l in screen if re.match(r"\s*[│]\s{2}.+", l)]
     if picker_hdr and len(picker_items) >= 1 and not thinking:
         state["mode"] = "picker"
         state["options"] = [
@@ -372,17 +412,16 @@ def parse_state(raw):
         return state
 
     # ── numbered options ─────────────────────────────────────────────────────
-    opts = []; seen = set()
-    for line in screen:
-        m = re.match(r"^[\s❯>\-]*(\d{1,2})[.)]\s+(.{2,})", line)
-        if m and m.group(1) not in seen:
-            seen.add(m.group(1)); opts.append({"num": m.group(1), "label": m.group(2).strip()[:40]})
-    has_cursor = any("❯" in l or bool(re.match(r"^\s*>\s*\d", l)) for l in screen)
     opts.sort(key=lambda o: int(o["num"]) if o["num"].isdigit() else 99)
     if opts and (len(opts) >= 2 or has_cursor) and not thinking:
         state["mode"] = "options"; state["options"] = opts[:6]
     if re.search(r"\[y[/ ]?n\]|\[yes[/ ]?no\]|\(y[/ ]?n\)", joined, re.I) and not thinking:
         state["mode"] = "yesno"; state["yesno"] = True
+
+    # ── hysteresis: hold thinking for 3s after last detection ────────────────
+    if state["mode"] == "idle" and now - _last_thinking_t < THINK_HOLD:
+        state["mode"] = "thinking"
+
     return state
 
 def _watch_trust():
@@ -445,8 +484,7 @@ def boot_page():
 def api_qr():
     try:
         import qrcode as _qr, io as _io
-        info = _sys_info()
-        url  = f"http://{info.get('ip','?')}:5000"
+        url = f"http://{_get_ip()}:5000"
         q = _qr.QRCode(version=None,
                         error_correction=_qr.constants.ERROR_CORRECT_M,
                         box_size=7, border=2)
@@ -469,7 +507,26 @@ def api_boot_status():
         mode=get_mode(),
     )
 
-# ·· Cockpit core ··
+@app.route("/api/tamago")
+def api_tamago():
+    now = time.time()
+    if now - _tamago_cache["t"] < _TAMAGO_TTL and _tamago_cache["data"] is not None:
+        return jsonify(**_tamago_cache["data"])
+    try:
+        req = urllib.request.Request(
+            f"{TAMAGO_URL}/leaderboard",
+            headers={"Accept": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=4) as r:
+            scores = json.loads(r.read().decode())
+        data = {"online": True, "scores": scores}
+    except Exception:
+        data = {"online": False, "scores": []}
+    _tamago_cache["data"] = data
+    _tamago_cache["t"] = now
+    return jsonify(**data)
+
+# ·· JarvisPi3 core ··
 @app.route("/")
 def cockpit_home():
     return send_from_directory(STATIC, "index.html")
@@ -841,5 +898,5 @@ if __name__ == "__main__":
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80)); ip = s.getsockname()[0]; s.close()
     except Exception: ip = "localhost"
-    print(f"\n  Pi Cockpit  →  http://{ip}:5000\n")
+    print(f"\n  JarvisPi3  →  http://{ip}:5000\n")
     app.run(host="0.0.0.0", port=5000, threaded=True, debug=False)
