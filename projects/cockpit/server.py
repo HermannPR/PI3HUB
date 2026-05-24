@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Pi Cockpit — unified control server (port 5000).
-Merges phone-input + pegasus-pad + new cockpit routes.
+Pi Nexus — unified control server (port 5000).
+Merges phone-input + pegasus-pad + nexus routes.
 Run: sudo python3 server.py   (or via start.sh / cockpit.service)
 """
 from flask import Flask, jsonify, request, send_from_directory, Response, stream_with_context
@@ -23,13 +23,30 @@ TMUX_SOCK    = "/tmp/tmux-1000/default"
 TMUX_SESSION = "setup"
 TMUX_WINDOW  = "claude"
 ANSI_RE      = re.compile(r"\x1b\[[0-9;]*[mKHFABCDJG]|\x1b\(B|\x1b=|\x1b>|\r")
-JUNK_RE      = re.compile(r"[^\x20-\x7e─-▟⠀-⣿’“”"
-                           r"✓✔✗✘●▪◻◼"
-                           r"❯➡✨☀-⛿⭐"
-                           r"°·×→←↑↓"
-                           r"⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
-                           r"╫╱╲┼│─├┤┬┴"
-                           r"★☆❤✔✘✓✗▶⏵]")
+JUNK_RE      = re.compile(
+    "["
+    r"^\x20-\x7e"
+    "\u2500-\u259f"
+    "\u2800-\u28ff"
+    "\u2018\u2019"
+    "\u201c\u201d"
+    "\u2713\u2714\u2717\u2718"
+    "\u273b\u2742\u2746"
+    "\u25cf\u25aa\u25fb\u25fc"
+    "\u276f\u27a1\u2728"
+    "\u2600-\u26ff"
+    "\u2b50"
+    "\u23fa\u23fb\u23fc\u23f5"
+    "\u00b0\u00b7\u00d7"
+    "\u2190-\u2193"
+    "\u2808\u2809\u2819\u2839\u2818\u2838"
+    "\u283b\u2834\u2826\u2827\u2807\u280f"
+    "\u256b\u2571\u2572\u253c\u2502\u2500"
+    "\u251c\u2524\u252c\u2534"
+    "\u2605\u2606\u2764"
+    "\u25b6\u23f5"
+    "]"
+)
 
 MODES = {
     "claude-dev": {"label": "CLAUDE DEV", "color": "#00e060", "ui": "/claude"},
@@ -147,6 +164,17 @@ except ImportError:
 # ── Flask ─────────────────────────────────────────────────────────────────────
 app  = Flask(__name__, static_folder=STATIC)
 sock = Sock(app)
+
+# ── Boot screen phone detection ───────────────────────────────────────────────
+_phone_connected = False
+
+@app.before_request
+def _track_phone():
+    global _phone_connected
+    if not _phone_connected:
+        ip = request.remote_addr or ""
+        if ip and ip not in ("127.0.0.1", "::1"):
+            _phone_connected = True
 
 # ── Mode management ───────────────────────────────────────────────────────────
 def get_mode():
@@ -290,6 +318,19 @@ def read_tmux():
         )
     except Exception: return ""
 
+def _delta(prev: list, curr: list):
+    """Return (new_lines, reset). Compares prev/curr to find only new content."""
+    if not prev:
+        return curr, True
+    # Find longest suffix of prev that appears in curr (max 30 lines to check)
+    max_overlap = min(len(prev), len(curr), 30)
+    for overlap in range(max_overlap, 0, -1):
+        tail = prev[-overlap:]
+        for i in range(len(curr) - overlap, -1, -1):
+            if curr[i:i + overlap] == tail:
+                return curr[i + overlap:], False
+    return curr, True  # no overlap → terminal cleared/reset
+
 def parse_state(raw):
     lines  = [l for l in raw.splitlines() if l.strip()]
     tail   = lines[-30:] if len(lines) > 30 else lines
@@ -299,21 +340,26 @@ def parse_state(raw):
     bottom = "\n".join(screen[-10:])
     thinking = bool(
         re.search(r"esc to interrupt|ctrl.c to interrupt", bottom, re.I) or
-        re.search(r"[✻✢·]\s.*\d+s", bottom) or
-        re.search(r"[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]\s", bottom)
+        re.search(r"[✻✢✦·⏺]\s+.*\d+\.?\d*s", bottom) or
+        re.search(r"[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏][\s\xa0]", bottom) or
+        re.search(r"\d+\.\d+s\s*$", bottom) or
+        re.search(r"Running|Executing|Writing|Reading|Searching|Compiling", bottom) and
+        re.search(r"\d+s", bottom)
     )
     if thinking:
         state["mode"] = "thinking"
     opts = []; seen = set()
     for line in screen:
-        m = re.match(r"[\s❯>]*(\d+)[.)]\s+(.+)", line)
+        # Match: "1. text", "> 1. text", "  2) text", etc.
+        m = re.match(r"^[\s❯>\-]*(\d{1,2})[.)]\s+(.{2,})", line)
         if m and m.group(1) not in seen:
             seen.add(m.group(1))
             opts.append({"num": m.group(1), "label": m.group(2).strip()[:40]})
-    has_cursor = any("❯" in l or bool(re.match(r"\s*>\s*\d", l)) for l in screen)
+    has_cursor = any("❯" in l or bool(re.match(r"^\s*>\s*\d", l)) for l in screen)
+    opts.sort(key=lambda o: int(o["num"]) if o["num"].isdigit() else 99)
     if opts and (len(opts) >= 2 or has_cursor) and not thinking:
         state["mode"] = "options"; state["options"] = opts[:6]
-    if re.search(r"\[y/n\]|\[Y/n\]|\[yes/no\]", joined, re.I) and not thinking:
+    if re.search(r"\[y[/ ]?n\]|\[yes[/ ]?no\]|\(y[/ ]?n\)", joined, re.I) and not thinking:
         state["mode"] = "yesno"; state["yesno"] = True
     return state
 
@@ -365,6 +411,41 @@ _PW_ENV = {"HOME": "/home/peepo", "XDG_RUNTIME_DIR": "/run/user/1000",
 _DEFAULT_SINK = "alsa_output.platform-3f00b840.mailbox.stereo-fallback"
 
 # ── Flask routes ──────────────────────────────────────────────────────────────
+
+# ·· Boot screen ··
+@app.route("/boot")
+def boot_page():
+    global _phone_connected
+    _phone_connected = False  # reset on each boot visit
+    return send_from_directory(STATIC, "boot.html")
+
+@app.route("/api/qr.png")
+def api_qr():
+    try:
+        import qrcode as _qr, io as _io
+        info = _sys_info()
+        url  = f"http://{info.get('ip','?')}:5000"
+        q = _qr.QRCode(version=None,
+                        error_correction=_qr.constants.ERROR_CORRECT_M,
+                        box_size=7, border=2)
+        q.add_data(url); q.make(fit=True)
+        img = q.make_image(fill_color="#c8dce8", back_color="#060c14")
+        buf = _io.BytesIO(); img.save(buf, "PNG"); buf.seek(0)
+        return Response(buf.getvalue(), mimetype="image/png",
+                        headers={"Cache-Control": "no-cache"})
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+
+@app.route("/api/boot/status")
+def api_boot_status():
+    info = _sys_info()
+    return jsonify(
+        connected=_phone_connected,
+        ip=info.get("ip", "?"),
+        temp=info.get("temp"),
+        uptime=info.get("uptime", ""),
+        mode=get_mode(),
+    )
 
 # ·· Cockpit core ··
 @app.route("/")
@@ -428,11 +509,23 @@ def ping():
 @app.route("/claude-state")
 def claude_state():
     def gen():
-        last = None
+        sent_lines = []
+        last_sig = None  # (mode, options_str) for change detection
         while True:
             state = parse_state(read_tmux())
-            if state != last:
-                yield f"data: {json.dumps(state)}\n\n"; last = state
+            new_lines, reset = _delta(sent_lines, state["preview"])
+            sent_lines = state["preview"]
+            sig = (state["mode"], str(state["options"]))
+            changed = sig != last_sig or new_lines or reset
+            if changed:
+                last_sig = sig
+                out = {
+                    "mode":      state["mode"],
+                    "options":   state["options"],
+                    "new_lines": new_lines,
+                    "reset":     reset,
+                }
+                yield f"data: {json.dumps(out)}\n\n"
             else:
                 yield ": ping\n\n"
             time.sleep(0.6)
