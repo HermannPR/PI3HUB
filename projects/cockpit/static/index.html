@@ -23,8 +23,11 @@ body { display:flex; flex-direction:column; height:100dvh; }
 #hdr-l { display:flex; align-items:center; gap:9px; }
 #dot { width:9px; height:9px; border-radius:50%; background:var(--g); box-shadow:0 0 6px var(--g); }
 #dot.dead { background:var(--red); box-shadow:0 0 6px var(--red); animation:blink .5s step-end infinite; }
+#title-block { display:flex; align-items:baseline; gap:7px; }
 #title { font-size:12px; font-weight:900; letter-spacing:3px; color:#28285a; font-family:'Courier New',monospace; }
-#hdr-ip { font-size:9px; color:#20204a; font-family:'Courier New',monospace; }
+#hdr-ver { font-size:16px; font-weight:900; font-family:'Courier New',monospace;
+           color:#00e060; letter-spacing:.5px; text-shadow:0 0 10px #00e06088; }
+#hdr-ip  { font-size:10px; color:#20204a; font-family:'Courier New',monospace; }
 
 /* ── HEALTH BAR ── */
 #health {
@@ -141,7 +144,10 @@ body { display:flex; flex-direction:column; height:100dvh; }
 <div id="hdr">
   <div id="hdr-l">
     <div id="dot"></div>
-    <span id="title">JARVIS PI3</span>
+    <div id="title-block">
+      <span id="title">JARVIS PI3</span>
+      <span id="hdr-ver">v—</span>
+    </div>
   </div>
   <span id="hdr-ip" onclick="window.open('/qr','_blank')" style="cursor:pointer" title="Tap for QR">…</span>
 </div>
@@ -239,6 +245,7 @@ async function pollHealth() {
   $("dot").className = "";
   const d = await r.json();
   $("hdr-ip").textContent = d.ip || "";
+  if (d.version) $("hdr-ver").textContent = "v" + d.version;
 
   const t = $("h-temp"); t.textContent = d.temp != null ? d.temp.toFixed(1)+"°C" : "--";
   t.className = "hs-val" + (d.temp >= 80 ? " bad" : d.temp >= 70 ? " warn" : " ok");
