@@ -41,10 +41,30 @@
 
 ## Remote access
 
-- SSH: `pi@raspberrypi.local` (LAN) or `pi@<tailscale-ip>` (anywhere)
-- Tailscale installed for mesh VPN
-- tmux for persistent sessions — always work inside tmux
-- KDE Connect for phone keyboard/mouse input
+- SSH: `peepo@192.168.5.241` (LAN) or via Tailscale
+- tmux session `setup` always running — attach with `tmux attach -t setup`
+- Controlled entirely via Claude Code — no physical keyboard/mouse available
+- GitHub: `git@github.com:HermannPR/PI3HUB.git` (SSH, key at `~/.ssh/id_ed25519`)
+
+## Git workflow (two repos, one remote)
+
+Two working trees both track `PI3HUB` on GitHub:
+- `/home/peepo/PI3` — local branch `main`, push: `git push`
+- `/media/peepo/KINGSTON/PI3` — local branch `master`, push: `git push origin HEAD:main`
+
+Rules:
+- Always use SSH remote, never HTTPS (no interactive auth available)
+- Prefer `git merge -X ours` over rebase when conflicts arise
+- Kingston pull may fail if untracked files conflict — remove them first
+- Cockpit project lives in `/home/peepo/PI3/projects/cockpit/` (SD card repo)
+- Tamagotchi project lives in `/media/peepo/KINGSTON/PI3/projects/tamagotchi/` (Kingston repo)
+
+## Active services
+
+- **Cockpit server** — `sudo python3 /home/peepo/PI3/projects/cockpit/server.py` (port 5000)
+  - Set `TAMAGO_URL=https://<vercel-url>` before starting to enable leaderboard
+- **Tamagotchi** — deployed on Vercel (`projects/tamagotchi/` subdirectory, Neon Postgres)
+- **Boot display** — `python3 /home/peepo/PI3/projects/cockpit/boot_display.py` (Tkinter, HDMI)
 
 ## Performance constraints
 

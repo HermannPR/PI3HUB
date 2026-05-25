@@ -53,6 +53,8 @@ _cached_ip   = [None]
 _tamago_cache = {"data": None, "t": 0.0}
 _TAMAGO_TTL  = 30.0
 
+VERSION = os.environ.get("PI_VERSION", "1.0")
+
 def _get_ip():
     if _cached_ip[0]:
         return _cached_ip[0]
@@ -275,7 +277,7 @@ def _ensure_claude():
 
 # ── System info ───────────────────────────────────────────────────────────────
 def _sys_info():
-    out = {"ip": _get_ip()}
+    out = {"ip": _get_ip(), "version": VERSION}
     # CPU temp
     try:
         r = subprocess.run(["vcgencmd", "measure_temp"], capture_output=True, text=True, timeout=2)
@@ -353,10 +355,13 @@ def _delta(prev: list, curr: list):
         tail = prev_n[-overlap:]
         for i in range(len(curr_n) - overlap, -1, -1):
             if curr_n[i:i + overlap] == tail:
-                # Send any lines that changed within the matched window (timer updates)
-                changed = [curr[i+j] for j in range(overlap)
-                           if prev[len(prev)-overlap+j] != curr[i+j]]
-                return changed + list(curr[i + overlap:]), False
+                new_after = list(curr[i + overlap:])
+                # If the last matched line changed (timer tick), send it so the
+                # client can update the spinner in-place (renderTR replaces lk lines).
+                last_matched = curr[i + overlap - 1]
+                if last_matched != prev[-1] and _TIMER_NORM.search(last_matched):
+                    return [last_matched] + new_after, False
+                return new_after, False
     return curr, True  # no overlap → terminal cleared/reset
 
 _last_thinking_t = 0.0
@@ -514,11 +519,18 @@ def api_tamago():
         return jsonify(**_tamago_cache["data"])
     try:
         req = urllib.request.Request(
-            f"{TAMAGO_URL}/leaderboard",
+            f"{TAMAGO_URL}/api/leaderboard",
             headers={"Accept": "application/json"}
         )
         with urllib.request.urlopen(req, timeout=4) as r:
-            scores = json.loads(r.read().decode())
+            raw = json.loads(r.read().decode())
+        # Normalize: mildred-pierce returns {users:[{alias,clicks}], pet, piOnline}
+        # Legacy flask tamagotchi returns [{nick, score}]
+        if isinstance(raw, dict) and "users" in raw:
+            scores = [{"nick": u.get("alias","?"), "score": u.get("clicks", 0)}
+                      for u in raw.get("users", [])]
+        else:
+            scores = raw
         data = {"online": True, "scores": scores}
     except Exception:
         data = {"online": False, "scores": []}
@@ -620,9 +632,9 @@ def claude_state():
                 yield f"data: {json.dumps(out)}\n\n"
             else:
                 yield 'data: {"ping":1}\n\n'
-            # activity-based adaptive sleep: fast while content changing, slow when idle
+            # Poll fast while thinking or content recently changed; slow when idle
             idle_secs = time.time() - last_change_t
-            if idle_secs < 3.0:
+            if state["mode"] == "thinking" or idle_secs < 3.0:
                 time.sleep(0.2)
             elif state["mode"] in ("options", "yesno", "picker"):
                 time.sleep(0.5)

@@ -61,8 +61,8 @@ def main():
     # Static elements
     logo_y = qr_y0 - fn_sub.metrics("linespace") - 10
     sub_y  = qr_y0 - 6
-    cv.create_text(cx, logo_y, text="J A R V I S  P I 3",
-                   fill=BRIGHT, font=fn_logo, anchor="s")
+    logo_id = cv.create_text(cx, logo_y, text="J A R V I S  P I 3",
+                             fill=BRIGHT, font=fn_logo, anchor="s")
     cv.create_text(cx, sub_y, text="RASPBERRY PI CONTROL INTERFACE",
                    fill=DIM, font=fn_sub, anchor="s")
 
@@ -94,9 +94,14 @@ def main():
     border_id = cv.create_rectangle(cx-QR//2-5, qr_y0-5,
                                     cx+QR//2+5, qr_y1+5,
                                     outline=DIM, fill="")
+    size_ver  = max(18, H // 40)
+    fn_ver    = tkfont.Font(family="Courier New", size=size_ver, weight="bold")
     ip_id     = cv.create_text(cx, qr_y1+18, text="--",
                                fill=ACCENT, font=fn_ip, anchor="n")
-    status_id = cv.create_text(cx, qr_y1+46, text="AWAITING CONNECTION_",
+    ver_id    = cv.create_text(cx, qr_y1+18+size_ip+8, text="v—",
+                               fill=BRIGHT, font=fn_ver, anchor="n")
+    status_id = cv.create_text(cx, qr_y1+18+size_ip+8+size_ver+8,
+                               text="AWAITING CONNECTION_",
                                fill=TEXT, font=fn_sub, anchor="n")
     temp_id   = cv.create_text(cx-130, H-26, text="TEMP --",
                                fill=DIM, font=fn_foot, anchor="center")
@@ -177,8 +182,12 @@ def main():
             root.after(1600, root.destroy)
             return
 
-        # IP
+        # IP + version
         cv.itemconfig(ip_id, text=f"http://{d.get('ip','--')}:5000")
+        if d.get("version"):
+            v = d["version"]
+            cv.itemconfig(ver_id,  text=f"v{v}")
+            cv.itemconfig(logo_id, text=f"J A R V I S  P I 3  ·  v{v}")
 
         # Footer stats
         temp = d.get("temp")
