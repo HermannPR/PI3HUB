@@ -1,6 +1,18 @@
 # PI3 — Raspberry Pi 3 Creative Dev Kit
 
+<p><img src="https://img.shields.io/badge/Raspberry_Pi-A22846?style=flat-square&logo=raspberrypi&logoColor=white" height="20" alt="Raspberry Pi"> <img src="https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white" height="20" alt="Python"> <img src="https://img.shields.io/badge/Flask-000000?style=flat-square&logo=flask&logoColor=white" height="20" alt="Flask"> <img src="https://img.shields.io/badge/Claude_Code-D97757?style=flat-square&logo=anthropic&logoColor=white" height="20" alt="Claude Code"> <img src="https://img.shields.io/badge/systemd-222222?style=flat-square" height="20" alt="systemd"></p>
+
 Toolkit for turning a Raspberry Pi 3 (1 GB RAM) into a creative dev machine: Claude Code on the Pi, phone-controlled UIs (Python/Flask), GPIO/audio/media setup, and retro gaming.
+
+| Cockpit (mode switcher) | Claude Code from the phone | Pegasus gamepad |
+| --- | --- | --- |
+| ![Cockpit](docs/screenshots/cockpit.png) | ![Claude Code session](docs/screenshots/claude.png) | ![Gamepad](docs/screenshots/gaming.png) |
+
+<sub>Captured from `mock_server.py` on a laptop (no Pi, no uinput) at phone size; the Claude session is the mock's scripted sample, not a real run.</sub>
+
+## The hard part
+
+Running Claude Code on a **1 GB Raspberry Pi 3** and driving it from a phone as if it were a proper workstation. The Pi has no keyboard or screen in normal use, so each phone UI is a Flask server that injects real input through Linux `uinput` (mouse, keyboard, gamepad) and streams the Claude Code tmux session to the phone over SSE. The phone view turns Claude's terminal states into touch controls — `[y/n]` prompts become big YES/NO buttons, numbered options become taps — following the output conventions in `CLAUDE.md` / `config/phone-ui-rules.md`, which tell Claude Code how to format answers for a small screen. Everything has to fit in ~700 MB alongside the desktop, so the servers are plain Flask with no build step, and systemd units bring them back after a reboot.
 
 ## What it is
 
