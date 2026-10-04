@@ -1,73 +1,60 @@
-# PI3 — Raspberry Pi 3 Creative Dev Kit
+# PI3HUB
 
-<p><img src="https://img.shields.io/badge/Raspberry_Pi-A22846?style=flat-square&logo=raspberrypi&logoColor=white" height="20" alt="Raspberry Pi"> <img src="https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white" height="20" alt="Python"> <img src="https://img.shields.io/badge/Flask-000000?style=flat-square&logo=flask&logoColor=white" height="20" alt="Flask"> <img src="https://img.shields.io/badge/Claude_Code-D97757?style=flat-square&logo=anthropic&logoColor=white" height="20" alt="Claude Code"> <img src="https://img.shields.io/badge/systemd-222222?style=flat-square" height="20" alt="systemd"></p>
+Kit de desarrollo para convertir una Raspberry Pi 3 (1 GB de RAM) en una máquina creativa que se controla desde el celular. Es para quien quiere usar una Pi sin teclado ni pantalla, incluyendo Claude Code corriendo en ella.
 
-Toolkit for turning a Raspberry Pi 3 (1 GB RAM) into a creative dev machine: Claude Code on the Pi, phone-controlled UIs (Python/Flask), GPIO/audio/media setup, and retro gaming.
-
-| Cockpit (mode switcher) | Claude Code from the phone | Pegasus gamepad |
+| Cockpit (cambio de modo) | Claude Code desde el celular | Control de juegos |
 | --- | --- | --- |
-| ![Cockpit](docs/screenshots/cockpit.png) | ![Claude Code session](docs/screenshots/claude.png) | ![Gamepad](docs/screenshots/gaming.png) |
+| ![Cockpit](docs/capturas/cockpit.png) | ![Sesión de Claude Code](docs/capturas/claude.png) | ![Gamepad](docs/capturas/gaming.png) |
 
-<sub>Captured from `mock_server.py` on a laptop (no Pi, no uinput) at phone size; the Claude session is the mock's scripted sample, not a real run.</sub>
+<sub>Capturas tomadas con `mock_server.py` en una laptop, sin Pi real. La sesión de Claude es un ejemplo guionado del mock.</sub>
 
-## The hard part
+## Qué incluye
 
-Running Claude Code on a **1 GB Raspberry Pi 3** and driving it from a phone as if it were a proper workstation. The Pi has no keyboard or screen in normal use, so each phone UI is a Flask server that injects real input through Linux `uinput` (mouse, keyboard, gamepad) and streams the Claude Code tmux session to the phone over SSE. The phone view turns Claude's terminal states into touch controls — `[y/n]` prompts become big YES/NO buttons, numbered options become taps — following the output conventions in `CLAUDE.md` / `config/phone-ui-rules.md`, which tell Claude Code how to format answers for a small screen. Everything has to fit in ~700 MB alongside the desktop, so the servers are plain Flask with no build step, and systemd units bring them back after a reboot.
+- Servidores Flask que convierten el celular en teclado, mouse, touchpad y gamepad (con `uinput`).
+- Cockpit: pantalla única para cambiar de modo (Claude Dev, Gaming, Desktop, Headless), ver la sesión de Claude Code en tmux por SSE, reiniciar o apagar la Pi.
+- Pegasus Pad: control para Pegasus Frontend y RetroArch con `xdotool`.
+- Tamagotchi: pequeña app Flask con tabla de puntajes en Postgres, lista para Vercel.
+- Scripts de instalación (`setup/`) y servicios de systemd para que todo arranque solo.
+- Ejemplos en `examples/` (LED, arte generativo, reproductor MIDI, NeoPixel).
+- `CLAUDE.md` y `config/phone-ui-rules.md` con las reglas de formato para que las respuestas de Claude se vean bien en pantalla chica.
 
-## What it is
+## Tecnologías
 
-- Flask phone-control servers that turn the phone into a keyboard/mouse, a gamepad, and a unified "cockpit" for controlling the Pi (including Claude Code sessions in tmux).
-- Shell setup scripts and systemd units for installing and auto-starting everything.
-- `CLAUDE.md` documents the hardware constraints and the phone-UI output conventions Claude Code must follow on this device; `config/phone-ui-rules.md` is the same style guide for the phone wrapper (numbered options, `[y/n]` confirmations, `✔ Done.` / `✗ Failed:` signals).
+Python, Flask, Flask-Sock, `uinput`, tmux, systemd, shell scripts, Postgres (Tamagotchi).
 
-## Hardware (summary — full details in CLAUDE.md)
+## Proyectos
 
-- Raspberry Pi 3 Model B/B+, 1 GB RAM (keep processes under ~700 MB), arm64, microSD storage.
-- GPIO (prefer `gpiozero`), I2C `/dev/i2c-1`, SPI, PWM (conflicts with onboard audio), NeoPixel (`rpi-ws281x`, needs sudo), camera (`picamera2`).
-- Audio: ALSA + JACK2, FluidSynth, Sonic Pi, SuperCollider, Pure Data.
-- Display: HDMI 1080p, framebuffer `/dev/fb0`, VNC; remote access via SSH, Tailscale mesh VPN, KDE Connect.
+| Proyecto | Puerto | Qué hace |
+| --- | --- | --- |
+| `projects/cockpit` | 5000 | Control unificado desde el celular |
+| `projects/phone-input` | 5000 | Celular como mouse, teclado y touchpad |
+| `projects/pegasus-pad` | 5001 | Gamepad para Pegasus Frontend |
+| `projects/tamagotchi` | n/a | Mascota virtual con leaderboard |
 
-## Projects
+## Cómo correrlo
 
-| Project | Port | What it does | Run |
-| --- | --- | --- | --- |
-| `projects/cockpit` | 5000 | Unified phone control: modes CLAUDE DEV / GAMING / DESKTOP / HEADLESS, uinput mouse+keyboard, streams the `setup:claude` tmux session over SSE, QR code, reboot/shutdown buttons. | `sudo bash start.sh` or `setup/cockpit.service` |
-| `projects/phone-input` | 5000 | Phone as mouse/keyboard/touchpad (uinput) with a YouTube tab (`yt-dlp`); auto-starts Claude Code in tmux (`setup:claude`, 60×30). | `sudo bash start.sh` or `setup/phone-server.service` |
-| `projects/pegasus-pad` | 5001 | Gamepad companion for Pegasus Frontend: injects keys via `xdotool` with PEGASUS and GAME (RetroArch) key maps. | `sudo bash start.sh` |
-
-## Other pieces
-
-- `mock_server.py` — runs all three UIs on a dev machine (localhost:5000) with fake auto-cycling Claude states; no uinput/Linux needed. `pip install flask flask-sock pillow`, then `python mock_server.py`.
-- `gamepad/` — phone gamepad web app (`pad.html` + `server.py`) via uinput.
-- `claude-session.sh` — launch/reattach Claude Code in the fixed tmux session `setup:claude`.
-- `copy_key.py` — Windows helper that pushes your public key to the Pi over SSH (paramiko).
-- `examples/` — `blink.py`, `generative_art.py`, `midi_player.py`, `neopixel_rainbow.py`.
-- `config/` — `config.txt.additions` (/boot/config.txt snippets), `phone-ui-rules.md`, `claude-skills/` (slash-command skills installed by `setup/install-skills.sh`).
-
-## Setup
-
-On the Pi (Raspberry Pi OS Bookworm):
+Probar sin Pi, en cualquier computadora:
 
 ```bash
-bash setup/base.sh            # system update + essential tools
-bash setup/remote-access.sh   # SSH hardening + Tailscale
-bash setup/claude-code.sh     # install Claude Code CLI
-bash setup/install-skills.sh  # install slash-command skills
-# optional: bash setup/audio.sh, led.sh, media.sh, visual.sh,
-#           retroarch.sh, phone-input.sh, phone-gamepad.sh
+pip install flask flask-sock pillow
+python mock_server.py
 ```
 
-Start a project:
+Luego abre `http://localhost:5000`.
+
+En la Pi (Raspberry Pi OS Bookworm):
 
 ```bash
+bash setup/base.sh
+bash setup/remote-access.sh
+bash setup/claude-code.sh
+bash setup/install-skills.sh
 cd projects/cockpit && sudo bash start.sh
 ```
 
-Or register as a service: copy `setup/cockpit.service` (or `phone-server.service`) to `/etc/systemd/system/` and run `systemctl enable --now cockpit.service`.
+Para que arranque con el sistema, copia `setup/cockpit.service` a `/etc/systemd/system/` y ejecuta `systemctl enable --now cockpit.service`. Para activar el leaderboard en el cockpit se usa la variable `TAMAGO_URL`.
 
-## Notes
+## Notas
 
-- 1 GB RAM: no PyTorch/TensorFlow full (use `tflite-runtime`), `make -j2` max, pygame at 720p/30fps is comfortable.
-- Scripts that touch GPIO/uinput need sudo; prefer `gpiozero` over `RPi.GPIO`.
-- Install Python packages with `pip3 install --break-system-packages <pkg>`.
-- The projects are also referenced from a USB mount (`/media/peepo/KINGSTON/PI3`); the systemd units wait for that mount before starting.
+- Con 1 GB de RAM conviene mantener los procesos por debajo de unos 700 MB.
+- Los scripts que tocan GPIO o `uinput` necesitan sudo.
